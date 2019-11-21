@@ -1,0 +1,573 @@
+Imports System
+Imports System.Linq
+Imports EnsoulSharp.SDK
+Imports EnsoulSharp.SDK.MenuUI
+Imports EnsoulSharp.SDK.Prediction
+Imports EnsoulSharp.SDK.Utility
+Imports Color = System.Drawing.Color
+
+Namespace EnsoulSharp.Ahri
+    Friend Class Ahri
+        Private Shared Q, W, E, R As Spell
+        Private Const _spellQSpeed As Single = 1700
+        Private Const _spellQSpeedMin As Single = 400
+        Private Const _spellQFarmSpeed As Single = 1700
+        Private ReadOnly _menu As Menu
+        Private ReadOnly _spellE As Spell
+        Private ReadOnly _spellQ As Spell
+        Private ReadOnly _spellR As Spell
+        Private ReadOnly _spellW As Spell
+
+        Public Shared Sub OnLoad()
+            Q = New Spell(SpellSlot.Q, 990)
+            W = New Spell(SpellSlot.W, 795 - 95)
+            E = New Spell(SpellSlot.E, 1000 - 10)
+            R = New Spell(SpellSlot.R, 1000 - 100)
+            Q.SetSkillshot(0.60F, 95F, Single.MaxValue, False, SkillshotType.Line)
+            W.SetSkillshot(0.71F, W.Range, Single.MaxValue, False, SkillshotType.Circle)
+            E.SetSkillshot(0.23F, 60, 1600F, True, SkillshotType.Line)
+            R.SetSkillshot(0.70F, 125F, Single.MaxValue, False, SkillshotType.Circle)
+            Dim MyMenu = New Menu("ensoulsharp.Ahri", "EnsoulSharp.Ahri", True)
+            Dim ult = New Menu("ult", "Ult Settings")
+            ult.Add(MenuWrapper.Ult.Key)
+            ult.Add(MenuWrapper.Ult.Auto)
+            ult.Add(MenuWrapper.Ult.NearMouse)
+            ult.Add(MenuWrapper.Ult.MouseZone)
+            ult.Add(MenuWrapper.Ult.DelayR)
+            ult.Add(MenuWrapper.Ult.DelayMs)
+            MyMenu.Add(ult)
+            Dim combat = New Menu("combat", "Combo Settings")
+            combat.Add(MenuWrapper.Combat.Q)
+            combat.Add(MenuWrapper.Combat.W)
+            combat.Add(MenuWrapper.Combat.E)
+            combat.Add(MenuWrapper.Combat.R)
+            MyMenu.Add(combat)
+            Dim harass = New Menu("harass", "Harass Settings")
+            harass.Add(MenuWrapper.Harass.Q)
+            harass.Add(MenuWrapper.Harass.W)
+            harass.Add(MenuWrapper.Harass.E)
+            harass.Add(MenuWrapper.Harass.Mana)
+            MyMenu.Add(harass)
+            Dim lane = New Menu("lane", "LaneClear Settings")
+            lane.Add(MenuWrapper.LaneClear.Q)
+            lane.Add(MenuWrapper.LaneClear.QH)
+            lane.Add(MenuWrapper.LaneClear.W)
+            lane.Add(MenuWrapper.LaneClear.WH)
+            lane.Add(MenuWrapper.LaneClear.Mana)
+            MyMenu.Add(lane)
+            Dim jungle = New Menu("jungle", "JungleClear Settings")
+            jungle.Add(MenuWrapper.JungleClear.Q)
+            jungle.Add(MenuWrapper.JungleClear.W)
+            jungle.Add(MenuWrapper.JungleClear.E)
+            jungle.Add(MenuWrapper.JungleClear.Mana)
+            MyMenu.Add(jungle)
+            Dim killable = New Menu("killable", "KillSteal Settings")
+            killable.Add(MenuWrapper.KillAble.Q)
+            killable.Add(MenuWrapper.KillAble.W)
+            killable.Add(MenuWrapper.KillAble.E)
+            MyMenu.Add(killable)
+            Dim misc = New Menu("misc", "Misc Settings")
+            misc.Add(MenuWrapper.Misc.QSlow)
+            misc.Add(MenuWrapper.Misc.EAntiGapcloser)
+            misc.Add(MenuWrapper.Misc.EInterrupt)
+            misc.Add(MenuWrapper.Misc.RSlow)
+            MyMenu.Add(misc)
+            Dim draw = New Menu("draw", "Draw Settings")
+            draw.Add(MenuWrapper.Draw.Q)
+            draw.Add(MenuWrapper.Draw.W)
+            draw.Add(MenuWrapper.Draw.E)
+            draw.Add(MenuWrapper.Draw.OnlyReady)
+            MyMenu.Add(draw)
+            MyMenu.Add(MenuWrapper.SemiKey.W)
+            MyMenu.Add(MenuWrapper.SemiKey.E)
+            MyMenu.Attach()
+            Game.OnUpdate += AddressOf OnUpdate
+            Gapcloser.OnGapcloser += AddressOf OnGapcloser
+            Interrupter.OnInterrupterSpell += AddressOf OnInterrupterSpell
+            Drawing.OnDraw += AddressOf OnDraw
+        End Sub
+
+        Private Shared ReadOnly Property QHitchance As HitChance
+            Get
+                Return If(MenuWrapper.Misc.QSlow.Enabled, HitChance.VeryHigh, HitChance.High)
+            End Get
+        End Property
+
+        Private Shared ReadOnly Property RHitchance As HitChance
+            Get
+                Return If(MenuWrapper.Misc.RSlow.Enabled, HitChance.VeryHigh, HitChance.High)
+            End Get
+        End Property
+
+        Private Shared Sub Ultimate()
+            If Not ObjectManager.Player.HasBuff("AhriLocusOfPower2") OrElse Q.IsCharging Then
+                Return
+            End If
+
+            If Not MenuWrapper.Ult.Auto.Enabled AndAlso Not (MenuWrapper.Combat.R.Enabled AndAlso Orbwalker.ActiveMode = OrbwalkerMode.Combo) AndAlso Not MenuWrapper.Ult.Key.Active Then
+                Return
+            End If
+
+            If Not MenuWrapper.Ult.Key.Active AndAlso MenuWrapper.Ult.DelayR.Enabled AndAlso Variables.GameTimeTickCount - R.LastCastAttemptT < MenuWrapper.Ult.DelayMs.Value Then
+                Return
+            End If
+
+            Dim target = TargetSelector.GetTarget(R.Range)
+
+            If MenuWrapper.Ult.NearMouse.Enabled AndAlso MenuWrapper.Ult.MouseZone.Value > 0 Then
+                target = TargetSelector.GetTargets(R.Range).FirstOrDefault(Function(x) x.Position.Distance(Game.CursorPosRaw) <= MenuWrapper.Ult.MouseZone.Value)
+            End If
+
+            If target IsNot Nothing AndAlso target.IsValidTarget(R.Range) Then
+                Dim pred = R.GetPrediction(target)
+
+                If pred.Hitchance >= RHitchance Then
+                    R.Cast(pred.CastPosition)
+                End If
+            End If
+        End Sub
+
+        Private Shared Sub SemiAutomatic()
+            If MenuWrapper.SemiKey.W.Active AndAlso W.IsReady() AndAlso Not ObjectManager.Player.HasBuff("AhriLocusOfPower2") AndAlso Not Q.IsCharging Then
+                ObjectManager.Player.IssueOrder(GameObjectOrder.MoveTo, Game.CursorPosRaw)
+                Dim target = TargetSelector.GetTarget(W.Range)
+
+                If target IsNot Nothing AndAlso target.IsValidTarget(W.Range) Then
+                    Dim pred = W.GetPrediction(target)
+
+                    If pred.Hitchance >= HitChance.VeryHigh Then
+                        W.Cast(pred.CastPosition)
+                    End If
+                End If
+            End If
+
+            If MenuWrapper.SemiKey.E.Active AndAlso E.IsReady() AndAlso Not ObjectManager.Player.HasBuff("AhriLocusOfPower2") AndAlso Not Q.IsCharging Then
+                ObjectManager.Player.IssueOrder(GameObjectOrder.MoveTo, Game.CursorPosRaw)
+                Dim target = TargetSelector.GetTarget(E.Range)
+
+                If target IsNot Nothing AndAlso target.IsValidTarget(E.Range) Then
+                    Dim pred = E.GetPrediction(target)
+
+                    If pred.Hitchance >= HitChance.VeryHigh Then
+                        E.Cast(pred.CastPosition)
+                    End If
+                End If
+            End If
+
+            If MenuWrapper.Ult.Key.Active AndAlso R.IsReady() AndAlso Not ObjectManager.Player.HasBuff("AhriLocusOfPower2") AndAlso Not Q.IsCharging Then
+                Dim target = TargetSelector.GetTarget(R.Range)
+
+                If target IsNot Nothing AndAlso target.IsValidTarget(R.Range) Then
+                    R.Cast(target.Position)
+                End If
+            End If
+        End Sub
+
+        Private Shared Sub Killable()
+            If MenuWrapper.KillAble.Q.Enabled AndAlso Q.IsReady() AndAlso Q.IsCharging Then
+
+                For Each target In GameObjects.EnemyHeroes.Where(Function(x) x.IsValidTarget(Q.ChargedMaxRange) AndAlso Not x.IsInvulnerable AndAlso x.Health < Q.GetDamage(x))
+
+                    If target.IsValidTarget(Q.Range) Then
+                        Dim pred = Q.GetPrediction(target)
+
+                        If pred.Hitchance >= QHitchance Then
+                            Q.ShootChargedSpell(pred.CastPosition, True)
+                            Return
+                        End If
+                    End If
+                Next
+            End If
+
+            If Q.IsCharging OrElse Variables.GameTimeTickCount - Q.LastCastAttemptT < 1500 Then
+                Return
+            End If
+
+            If MenuWrapper.KillAble.W.Enabled AndAlso W.IsReady() Then
+
+                For Each target In GameObjects.EnemyHeroes.Where(Function(x) x.IsValidTarget(W.Range) AndAlso Not x.IsInvulnerable AndAlso x.Health < W.GetDamage(x))
+
+                    If target.IsValidTarget(W.Range) Then
+                        Dim pred = W.GetPrediction(target)
+
+                        If pred.Hitchance >= HitChance.VeryHigh Then
+                            W.Cast(pred.CastPosition)
+                            Return
+                        End If
+                    End If
+                Next
+            End If
+
+            If MenuWrapper.KillAble.E.Enabled AndAlso E.IsReady() Then
+
+                For Each target In GameObjects.EnemyHeroes.Where(Function(x) x.IsValidTarget(E.Range) AndAlso Not x.IsInvulnerable AndAlso x.Health < E.GetDamage(x))
+
+                    If target.IsValidTarget(E.Range) Then
+                        Dim pred = E.GetPrediction(target)
+
+                        If pred.Hitchance >= HitChance.VeryHigh Then
+                            E.Cast(pred.CastPosition)
+                            Return
+                        End If
+                    End If
+                Next
+            End If
+        End Sub
+
+        Private Shared Sub Combo()
+            If Not Q.IsCharging Then
+
+                If Not ObjectManager.Player.HasBuff("AhriLocusOfPower2") Then
+
+                    If MenuWrapper.Combat.W.Enabled AndAlso W.IsReady() Then
+                        Dim target = TargetSelector.GetTarget(W.Range)
+
+                        If target IsNot Nothing AndAlso target.IsValidTarget(W.Range) Then
+                            Dim pred = W.GetPrediction(target)
+
+                            If pred.Hitchance >= HitChance.VeryHigh Then
+                                W.Cast(pred.CastPosition)
+                            End If
+                        End If
+                    End If
+
+                    If MenuWrapper.Combat.E.Enabled AndAlso E.IsReady() Then
+                        Dim target = TargetSelector.GetTarget(E.Range)
+
+                        If target IsNot Nothing AndAlso target.IsValidTarget(E.Range) Then
+                            Dim pred = E.GetPrediction(target)
+
+                            If pred.Hitchance >= HitChance.VeryHigh Then
+                                E.Cast(pred.CastPosition)
+                            End If
+                        End If
+                    End If
+
+                    If MenuWrapper.Combat.Q.Enabled AndAlso Q.IsReady() Then
+                        Dim target = TargetSelector.GetTarget(Q.Range)
+
+                        If target IsNot Nothing AndAlso target.IsValidTarget(Q.Range) Then
+                            Dim pred = Q.GetPrediction(target)
+
+                            If pred.Hitchance >= HitChance.VeryHigh Then
+                                Q.Cast(pred.CastPosition)
+                            End If
+                        End If
+                    End If
+                End If
+            Else
+
+                If MenuWrapper.Combat.Q.Enabled AndAlso Q.IsReady() AndAlso Q.IsCharging Then
+                    Dim target = TargetSelector.GetTarget(Q.Range)
+
+                    If target IsNot Nothing AndAlso target.IsValidTarget(Q.Range) Then
+                        Dim pred = Q.GetPrediction(target)
+
+                        If pred.Hitchance >= QHitchance Then
+                            Q.ShootChargedSpell(pred.CastPosition, True)
+                        End If
+                    End If
+                End If
+            End If
+        End Sub
+
+        Private Shared Sub Harass()
+            If Not Q.IsCharging Then
+
+                If Not ObjectManager.Player.HasBuff("AhriLocusOfPower2") AndAlso ObjectManager.Player.ManaPercent >= MenuWrapper.Harass.Mana.Value Then
+
+                    If MenuWrapper.Harass.W.Enabled AndAlso W.IsReady() Then
+                        Dim target = TargetSelector.GetTarget(W.Range)
+
+                        If target IsNot Nothing AndAlso target.IsValidTarget(W.Range) Then
+                            Dim pred = W.GetPrediction(target)
+
+                            If pred.Hitchance >= HitChance.VeryHigh Then
+                                W.Cast(pred.CastPosition)
+                                Return
+                            End If
+                        End If
+                    End If
+
+                    If MenuWrapper.Harass.E.Enabled AndAlso E.IsReady() Then
+                        Dim target = TargetSelector.GetTarget(E.Range)
+
+                        If target IsNot Nothing AndAlso target.IsValidTarget(E.Range) Then
+                            Dim pred = E.GetPrediction(target)
+
+                            If pred.Hitchance >= HitChance.VeryHigh Then
+                                E.Cast(pred.CastPosition)
+                                Return
+                            End If
+                        End If
+                    End If
+
+                    If MenuWrapper.Harass.Q.Enabled AndAlso Q.IsReady() Then
+                        Dim target = TargetSelector.GetTarget(Q.ChargedMaxRange)
+
+                        If target IsNot Nothing AndAlso target.IsValidTarget(Q.ChargedMaxRange) Then
+
+                            If Not W.IsReady() OrElse target.DistanceToPlayer() > 850 Then
+                                Dim pred = Q.GetPrediction(target)
+
+                                If pred.Hitchance >= HitChance.High Then
+                                    Q.StartCharging(True)
+                                End If
+                            End If
+                        End If
+                    End If
+                End If
+            Else
+
+                If MenuWrapper.Harass.Q.Enabled AndAlso Q.IsReady() AndAlso Q.IsCharging Then
+                    Dim target = TargetSelector.GetTarget(Q.Range)
+
+                    If target IsNot Nothing AndAlso target.IsValidTarget(Q.Range) Then
+                        Dim pred = Q.GetPrediction(target)
+
+                        If pred.Hitchance >= QHitchance Then
+                            Q.ShootChargedSpell(pred.CastPosition, True)
+                        End If
+                    End If
+                End If
+            End If
+        End Sub
+
+        Private Shared Sub LaneClear()
+            If Not Q.IsCharging Then
+
+                If Not ObjectManager.Player.HasBuff("AhriLocusOfPower2") AndAlso ObjectManager.Player.ManaPercent >= MenuWrapper.Harass.Mana.Value Then
+
+                    If MenuWrapper.LaneClear.W.Enabled AndAlso W.IsReady() Then
+                        Dim minions = GameObjects.EnemyMinions.Where(Function(x) x.IsValidTarget(W.Range) AndAlso x.IsMinion()).Cast(Of AIBaseClient)().ToList()
+
+                        If minions.Any() Then
+                            Dim wFarmLocation = W.GetCircularFarmLocation(minions)
+
+                            If wFarmLocation.Position.IsValid() AndAlso wFarmLocation.MinionsHit >= MenuWrapper.LaneClear.WH.Value Then
+                                W.Cast(wFarmLocation.Position)
+                                Return
+                            End If
+                        End If
+                    End If
+
+                    If MenuWrapper.LaneClear.Q.Enabled AndAlso Q.IsReady() Then
+                        Dim minions = GameObjects.EnemyMinions.Where(Function(x) x.IsValidTarget(Q.Range) AndAlso x.IsMinion()).Cast(Of AIBaseClient)().ToList()
+
+                        If minions.Any() Then
+                            Dim wFarmLocation = Q.GetCircularFarmLocation(minions)
+
+                            If wFarmLocation.Position.IsValid() AndAlso wFarmLocation.MinionsHit >= MenuWrapper.LaneClear.WH.Value Then
+                                Q.Cast(wFarmLocation.Position)
+                                Return
+                            End If
+                        End If
+                    End If
+                End If
+            Else
+
+                If MenuWrapper.LaneClear.Q.Enabled AndAlso Q.IsReady() AndAlso Q.IsCharging Then
+                    Dim minions = GameObjects.EnemyMinions.Where(Function(x) x.IsValidTarget(Q.Range) AndAlso x.IsMinion()).Cast(Of AIBaseClient)().ToList()
+
+                    If minions.Any() Then
+                        Dim qFarmLocation = Q.GetLineFarmLocation(minions)
+
+                        If qFarmLocation.Position.IsValid() AndAlso qFarmLocation.MinionsHit >= MenuWrapper.LaneClear.QH.Value Then
+                            Q.ShootChargedSpell(qFarmLocation.Position.ToVector3())
+                        End If
+                    End If
+                End If
+            End If
+        End Sub
+
+        Private Shared Sub JungleClear()
+            If Not Q.IsCharging Then
+
+                If Not ObjectManager.Player.HasBuff("AhriLocusOfPower2") AndAlso ObjectManager.Player.ManaPercent >= MenuWrapper.LaneClear.Mana.Value Then
+
+                    If MenuWrapper.JungleClear.W.Enabled AndAlso W.IsReady() Then
+                        Dim mob = GameObjects.Jungle.Where(Function(x) x.IsValidTarget(W.Range) AndAlso x.GetJungleType() <> JungleType.Unknown).OrderByDescending(Function(x) x.MaxHealth).FirstOrDefault()
+
+                        If mob IsNot Nothing AndAlso mob.IsValidTarget(W.Range) Then
+                            Dim pred = W.GetPrediction(mob)
+
+                            If pred.Hitchance >= HitChance.High Then
+                                W.Cast(pred.CastPosition)
+                                Return
+                            End If
+                        End If
+                    End If
+
+                    If MenuWrapper.JungleClear.Q.Enabled AndAlso Q.IsReady() Then
+                        Dim mob = GameObjects.Jungle.Where(Function(x) x.IsValidTarget(W.Range) AndAlso x.GetJungleType() <> JungleType.Unknown).OrderByDescending(Function(x) x.MaxHealth).FirstOrDefault()
+
+                        If mob IsNot Nothing AndAlso mob.IsValidTarget(Q.Range) Then
+                            Dim pred = Q.GetPrediction(mob)
+
+                            If pred.Hitchance >= HitChance.High Then
+                                Q.Cast(pred.CastPosition)
+                                Return
+                            End If
+                        End If
+                    End If
+
+                    If MenuWrapper.JungleClear.E.Enabled AndAlso E.IsReady() Then
+                        Dim mob = GameObjects.Jungle.Where(Function(x) x.IsValidTarget(E.Range) AndAlso x.GetJungleType() <> JungleType.Unknown).OrderByDescending(Function(x) x.MaxHealth).FirstOrDefault()
+
+                        If mob IsNot Nothing AndAlso mob.IsValidTarget(E.Range) Then
+                            Dim pred = E.GetPrediction(mob)
+
+                            If pred.Hitchance >= HitChance.High Then
+                                E.Cast(pred.CastPosition)
+                                Return
+                            End If
+                        End If
+                    End If
+
+                    If MenuWrapper.JungleClear.Q.Enabled AndAlso Q.IsReady() Then
+                        Dim mob = GameObjects.Jungle.Where(Function(x) x.IsValidTarget(Q.ChargedMaxRange) AndAlso x.GetJungleType() <> JungleType.Unknown).OrderByDescending(Function(x) x.MaxHealth).FirstOrDefault()
+
+                        If mob IsNot Nothing AndAlso mob.IsValidTarget(Q.ChargedMaxRange) Then
+                            Q.StartCharging()
+                        End If
+                    End If
+                End If
+            Else
+
+                If MenuWrapper.JungleClear.Q.Enabled AndAlso Q.IsReady() AndAlso Q.IsCharging Then
+                    Dim mob = GameObjects.Jungle.Where(Function(x) x.IsValidTarget(Q.ChargedMaxRange) AndAlso x.GetJungleType() <> JungleType.Unknown).OrderByDescending(Function(x) x.MaxHealth).FirstOrDefault()
+
+                    If mob IsNot Nothing AndAlso mob.IsValidTarget(Q.Range) Then
+                        Dim pred = Q.GetPrediction(mob)
+
+                        If pred.Hitchance >= HitChance.High Then
+                            Q.ShootChargedSpell(pred.CastPosition)
+                        End If
+                    End If
+                End If
+            End If
+        End Sub
+
+        Private Shared Sub OnUpdate(ByVal args As EventArgs)
+            If ObjectManager.Player.IsDead OrElse ObjectManager.Player.IsRecalling() Then
+                Return
+            End If
+
+            If MenuGUI.IsChatOpen OrElse MenuGUI.IsShopOpen Then
+                Return
+            End If
+
+            If R.Level > 0 Then
+                R.Range = 2000 + 1200 * R.Level
+            End If
+
+            If ObjectManager.Player.HasBuff("AhriLocusOfPower2") Then
+                Orbwalker.AttackState = False
+                Orbwalker.MovementState = False
+                Ultimate()
+                Return
+            End If
+
+            If Q.IsCharging AndAlso Orbwalker.ActiveMode <> OrbwalkerMode.None Then
+                Orbwalker.AttackState = False
+                ObjectManager.Player.IssueOrder(GameObjectOrder.MoveTo, Game.CursorPosRaw)
+            End If
+
+            Orbwalker.AttackState = True
+            Orbwalker.MovementState = True
+            SemiAutomatic()
+            Killable()
+
+            Select Case Orbwalker.ActiveMode
+                Case OrbwalkerMode.Combo
+                    Combo()
+                Case OrbwalkerMode.Harass
+                    Harass()
+                Case OrbwalkerMode.LaneClear
+                    LaneClear()
+                    JungleClear()
+            End Select
+        End Sub
+
+        Private Shared Sub OnGapcloser(ByVal sender As AIHeroClient, ByVal args As Gapcloser.GapcloserArgs)
+            If ObjectManager.Player.IsDead OrElse ObjectManager.Player.IsRecalling() Then
+                Return
+            End If
+
+            If MenuGUI.IsChatOpen OrElse MenuGUI.IsShopOpen Then
+                Return
+            End If
+
+            If Q.IsCharging OrElse ObjectManager.Player.HasBuff("AhriLocusOfPower2") Then
+                Return
+            End If
+
+            If MenuWrapper.Misc.EAntiGapcloser.Enabled AndAlso E.IsReady() AndAlso args.EndPosition.DistanceToPlayer() < 250 Then
+                Dim pred = E.GetPrediction(sender)
+
+                If pred.Hitchance >= HitChance.High Then
+                    E.Cast(pred.CastPosition)
+                End If
+            End If
+        End Sub
+
+        Private Shared Sub OnInterrupterSpell(ByVal sender As AIHeroClient, ByVal args As Interrupter.InterruptSpellArgs)
+            If ObjectManager.Player.IsDead OrElse ObjectManager.Player.IsRecalling() Then
+                Return
+            End If
+
+            If MenuGUI.IsChatOpen OrElse MenuGUI.IsShopOpen Then
+                Return
+            End If
+
+            If Q.IsCharging OrElse ObjectManager.Player.HasBuff("AhriLocusOfPower2") Then
+                Return
+            End If
+
+            If MenuWrapper.Misc.EAntiGapcloser.Enabled AndAlso E.IsReady() AndAlso args.DangerLevel >= Interrupter.DangerLevel.Medium AndAlso sender.DistanceToPlayer() < E.Range Then
+                Dim pred = E.GetPrediction(sender)
+
+                If pred.Hitchance >= HitChance.High Then
+                    E.Cast(pred.CastPosition)
+                End If
+            End If
+        End Sub
+
+        Private Shared Sub OnDraw(ByVal args As EventArgs)
+            If ObjectManager.Player.IsDead OrElse ObjectManager.Player.IsRecalling() Then
+                Return
+            End If
+
+            If MenuGUI.IsChatOpen OrElse MenuGUI.IsShopOpen Then
+                Return
+            End If
+
+            If MenuWrapper.Draw.Q.Enabled Then
+
+                If MenuWrapper.Draw.OnlyReady.Enabled AndAlso Q.IsReady() Then
+                    Render.Circle.DrawCircle(GameObjects.Player.Position, Q.Range, Color.FromArgb(125, 0, 255), 0)
+                ElseIf Not MenuWrapper.Draw.OnlyReady.Enabled Then
+                    Render.Circle.DrawCircle(GameObjects.Player.Position, Q.Range, Color.FromArgb(125, 0, 255), 0)
+                End If
+            End If
+
+            If MenuWrapper.Draw.W.Enabled Then
+
+                If MenuWrapper.Draw.OnlyReady.Enabled AndAlso W.IsReady() Then
+                    Render.Circle.DrawCircle(GameObjects.Player.Position, W.Range, Color.FromArgb(125, 0, 0), 1)
+                ElseIf Not MenuWrapper.Draw.OnlyReady.Enabled Then
+                    Render.Circle.DrawCircle(GameObjects.Player.Position, W.Range, Color.FromArgb(125, 0, 0), 1)
+                End If
+            End If
+
+            If MenuWrapper.Draw.E.Enabled Then
+
+                If MenuWrapper.Draw.OnlyReady.Enabled AndAlso E.IsReady() Then
+                    Render.Circle.DrawCircle(GameObjects.Player.Position, E.Range, Color.FromArgb(125, 0, 255), 0)
+                ElseIf Not MenuWrapper.Draw.OnlyReady.Enabled Then
+                    Render.Circle.DrawCircle(GameObjects.Player.Position, E.Range, Color.FromArgb(125, 0, 255), 0)
+                End If
+            End If
+        End Sub
+    End Class
+End Namespace
