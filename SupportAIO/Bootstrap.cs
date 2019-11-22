@@ -43,6 +43,13 @@ namespace SupportAIO
                         case "Zilean":
                             new Champions.Zilean();
                             break;
+                        case "Rakan":
+                            new Champions.Zilean();
+                            break;
+                        case "Zyra":
+                            new Champions.Zilean();
+                            break;
+
                     }
                 };
             }
