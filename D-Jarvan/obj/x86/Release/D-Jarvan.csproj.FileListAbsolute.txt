@@ -1,0 +1,12 @@
+C:\Users\Vinh\Documents\GitHub\ensoulmaster\ProDragon\D-Jarvan\bin\Release\D-Jarvan.exe.config
+C:\Users\Vinh\Documents\GitHub\ensoulmaster\ProDragon\D-Jarvan\bin\Release\D-Jarvan.exe
+C:\Users\Vinh\Documents\GitHub\ensoulmaster\ProDragon\D-Jarvan\bin\Release\D-Jarvan.pdb
+C:\Users\Vinh\Documents\GitHub\ensoulmaster\ProDragon\D-Jarvan\bin\Release\EnsoulSharp.Sandbox.dll
+C:\Users\Vinh\Documents\GitHub\ensoulmaster\ProDragon\D-Jarvan\bin\Release\EnsoulSharp.SDK.dll
+C:\Users\Vinh\Documents\GitHub\ensoulmaster\ProDragon\D-Jarvan\bin\Release\EnsoulSharp.Wrapper.dll
+C:\Users\Vinh\Documents\GitHub\ensoulmaster\ProDragon\D-Jarvan\bin\Release\SharpDX.Direct3D9.dll
+C:\Users\Vinh\Documents\GitHub\ensoulmaster\ProDragon\D-Jarvan\bin\Release\SharpDX.dll
+C:\Users\Vinh\Documents\GitHub\ensoulmaster\ProDragon\D-Jarvan\bin\Release\Newtonsoft.Json.dll
+C:\Users\Vinh\Documents\GitHub\ensoulmaster\ProDragon\D-Jarvan\obj\x86\Release\D-Jarvan.csproj.CopyComplete
+C:\Users\Vinh\Documents\GitHub\ensoulmaster\ProDragon\D-Jarvan\obj\x86\Release\D-Jarvan.exe
+C:\Users\Vinh\Documents\GitHub\ensoulmaster\ProDragon\D-Jarvan\obj\x86\Release\D-Jarvan.pdb
