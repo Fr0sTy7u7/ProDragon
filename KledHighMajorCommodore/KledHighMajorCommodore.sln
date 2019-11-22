@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29306.81
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KledHighMajorCommodore", "KledHighMajorCommodore.csproj", "{B867DD9F-171F-49F2-A2F0-61340F7CB678}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x86 = Debug|x86
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B867DD9F-171F-49F2-A2F0-61340F7CB678}.Debug|x86.ActiveCfg = Debug|x86
+		{B867DD9F-171F-49F2-A2F0-61340F7CB678}.Debug|x86.Build.0 = Debug|x86
+		{B867DD9F-171F-49F2-A2F0-61340F7CB678}.Release|x86.ActiveCfg = Release|x86
+		{B867DD9F-171F-49F2-A2F0-61340F7CB678}.Release|x86.Build.0 = Release|x86
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {B67B797C-C606-447A-9A7B-D6B9B7357B0B}
+	EndGlobalSection
+EndGlobal
