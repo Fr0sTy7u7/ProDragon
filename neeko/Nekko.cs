@@ -146,7 +146,7 @@ namespace Nekko
             W.SetSkillshot(1.25f, 225f, 0, false, SkillshotType.Circle);
 
             E = new Spell(SpellSlot.E, 1000f);
-            E.SetSkillshot(0.5f, 140f, 1300, false, SkillshotType.Circle);
+            E.SetSkillshot(0.5f, 140f, 1300, false, SkillshotType.Line);
 
             R = new Spell(SpellSlot.R, 600f);
 
@@ -155,7 +155,7 @@ namespace Nekko
 
             #region Menu Init
 
-            myMenu = new Menu(objPlayer.CharacterName, "Olympus.Veigar", true);
+            myMenu = new Menu(objPlayer.CharacterName, "Neeko", true);
 
             var comboMenu = new Menu("comboMenu", "Combo")
             {

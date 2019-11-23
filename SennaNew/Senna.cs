@@ -139,7 +139,8 @@ namespace Nekko
 
         public static void OnLoad()
         {
-            Q = new Spell(SpellSlot.Q, 660f);
+            var target = TargetSelector.GetTarget(objPlayer.GetRealAutoAttackRange());
+            Q = new Spell(SpellSlot.Q, objPlayer.GetRealAutoAttackRange(target));
             Q1 = new Spell(SpellSlot.Q, 1300);
             Q.SetTargetted(0.5f, float.MaxValue);
             Q1.SetSkillshot(0.5f, 130f, 0f, true, SkillshotType.Line);
@@ -155,7 +156,7 @@ namespace Nekko
 
             #region Menu Init
 
-            myMenu = new Menu(objPlayer.CharacterName, "Olympus.Veigar", true);
+            myMenu = new Menu(objPlayer.CharacterName, "New Senna", true);
 
             var comboMenu = new Menu("comboMenu", "Combo")
             {
