@@ -142,7 +142,7 @@ namespace Nekko
             Q = new Spell(SpellSlot.Q, 800f);
             Q.SetSkillshot(0.25f, 70f, 1500f, true, SkillshotType.Circle);
 
-            W = new Spell(SpellSlot.W, 900f);
+            W = new Spell(SpellSlot.W, 600f);
             W.SetSkillshot(1.25f, 225f, 0, false, SkillshotType.Circle);
 
             E = new Spell(SpellSlot.E, 1000f);
@@ -314,7 +314,7 @@ namespace Nekko
             if (target == null || target.IsDead || target.IsAlly)
                 return;
 
-            if (E.IsReady())
+            if (E.IsReady() && objPlayer.Mana >= Q.Mana)
             {
                 if (!target.IsValidTarget(E.Range))
                     return;
@@ -323,18 +323,18 @@ namespace Nekko
 
                         if (getPrediction.Hitchance >= HitChance.Medium)
                         {
-                            E.Cast(getPrediction.CastPosition);
+                            E.Cast(target.PreviousPosition);
                         }
             }
             if (Q.IsReady())
             {
-                if (!target.IsValidTarget(Q.Range - 50))
+                if (!target.IsValidTarget(Q.Range))
                     return;
 
                 var getPrediction = Q.GetPrediction(target);
 
-                if (getPrediction.CollisionObjects.Count() < 2 && getPrediction.Hitchance >= HitChance.High)
-                    Q.Cast(getPrediction.CastPosition);
+                if (getPrediction.CollisionObjects.Count() < 2 && getPrediction.Hitchance >= HitChance.Low)
+                    Q.Cast(target.PreviousPosition);
             }
             /*if (MenuSettings.Combo.useW.Enabled && W.IsReady())
             {
@@ -363,25 +363,68 @@ namespace Nekko
             }*/
             if (R.IsReady())
             {
-                var getPrediction = W.GetPrediction(target);
+                var getPrediction = R.GetPrediction(target);
 
-                if (!target.IsValidTarget(R.Range))
+                if (!target.IsValidTarget(R.Range + 100))
                     return;
                 if (Q.IsReady() && getDamage(target, true, false, false, false) > target.Health)
                     return;
 
-                if (target.Health + 100 < getDamage(target, false, false, true, true))
-                    R.Cast();
-                DelayAction.Add(100, () =>
+                if (E.IsReady() && getDamage(target, false, false, true, false) > target.Health)
+                    return;
+
+                if(target.IsValidTarget(R.Range))
                 {
-                    W.Cast(getPrediction.CastPosition);
-                });
+                    if(objPlayer.Mana >= R.Mana + Q.Mana)
+                    {
+                        if(target.Health <= getDamage(target, true,false, false, true))
+                        {
+                            R.Cast();
+                            DelayAction.Add(1100, () =>
+                            {
+                                Q.Cast(target.PreviousPosition);
+                            });
+                        }
+                    }
+
+                    if (objPlayer.Mana >= R.Mana + E.Mana)
+                    {
+                        if (target.Health <= getDamage(target, false, false, true, true))
+                        {
+                            R.Cast();
+                            DelayAction.Add(100, () =>
+                            {
+                                E.Cast(target.PreviousPosition);
+                            });
+                        }
+                    }
+
+                    if (summonerIgnite.IsReady())
+                    {
+                        if (target.Health < getDamage(target, false, false, true, true))
+                            R.Cast();
+                    }
+                }
+
+                if (target.Health < getDamage(target, false, false, true, false))
+                {
+                    R.Cast();
+                    DelayAction.Add(0, () =>
+                    {
+                        W.Cast(target.PreviousPosition);
+                    });
+                }
+
+                if (target != null && objPlayer.CountEnemyHeroesInRange(R.Range - 200) >= 2 )
+                {
+                    R.Cast();
+                }
 
 
                 if (!target.IsValidTarget(800))
                 {
 
-                    if (objPlayer.CountEnemyHeroesInRange(1500) <= 1)
+                    if (objPlayer.CountEnemyHeroesInRange(700) <= 2)
                     {
 
                         var t = TargetSelector.GetTarget(950);
@@ -392,7 +435,7 @@ namespace Nekko
                             {
                                 if (target.IsValidTarget(900))
                                 {
-                                    if(target.IsUnderEnemyTurret(0))
+                                    if(target.IsUnderEnemyTurret(200))
                                     {
                                         return;
                                     }
@@ -420,16 +463,25 @@ namespace Nekko
 
         private static void autow()
         {
-            if(R.Cast())
+            var target = Orbwalker.GetTarget() as AIHeroClient;
+            if (R.Cast())
             {
-                W.Cast();
+                if (W.IsReady() && objPlayer.Mana >= Q.Mana + E.Mana)
+                {
+                    W.Cast();
+                }
+            }
+
+            if(target.IsValidTarget(200))
+            {
+                W.Cast(target.PreviousPosition);
             }
         }
         private static void Harass()
         {
             if (!MenuSettings.Keys.harassToggle.Active)
                 return;
-            if (objPlayer.ManaPercent < 40)
+            if (objPlayer.ManaPercent < 30)
                 return;
 
             var target = TargetSelector.GetTarget(Q.Range);
@@ -562,8 +614,12 @@ namespace Nekko
         }
         private static void OnGapcloser(AIHeroClient sender, Gapcloser.GapcloserArgs args)
         {
-            if (args != null && args.EndPosition.DistanceToPlayer() < 700)
+            var target = TargetSelector.GetTarget(Q.Range);
+            if (args != null && args.EndPosition.DistanceToPlayer() < 250)
                 W.Cast(objPlayer.Position);
+
+            if (args != null && args.EndPosition.DistanceToPlayer() < 350)
+                E.Cast(target.PreviousPosition);
         }
 
         #endregion
@@ -590,6 +646,10 @@ namespace Nekko
             if (R.IsReady())
             {
                 Drawing.DrawCircle(objPlayer.Position, R.Range, System.Drawing.Color.DarkBlue);
+            }
+            if (R.IsReady() && summonerFlash.IsReady())
+            {
+                Drawing.DrawCircle(objPlayer.Position, 800, System.Drawing.Color.DarkBlue);
             }
         }
         private static void OnEndScene(EventArgs args)

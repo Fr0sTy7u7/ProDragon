@@ -1,0 +1,13 @@
+C:\Users\Vinh\Desktop\EnsoulSharp-master (1)\neeko\bin\Release\Nekko.exe.config
+C:\Users\Vinh\Desktop\EnsoulSharp-master (1)\neeko\bin\Release\Nekko.exe
+C:\Users\Vinh\Desktop\EnsoulSharp-master (1)\neeko\bin\Release\Nekko.pdb
+C:\Users\Vinh\Desktop\EnsoulSharp-master (1)\neeko\bin\Release\EnsoulSharp.SDK.dll
+C:\Users\Vinh\Desktop\EnsoulSharp-master (1)\neeko\bin\Release\EnsoulSharp.Wrapper.dll
+C:\Users\Vinh\Desktop\EnsoulSharp-master (1)\neeko\bin\Release\SharpDX.dll
+C:\Users\Vinh\Desktop\EnsoulSharp-master (1)\neeko\bin\Release\SPrediction.dll
+C:\Users\Vinh\Desktop\EnsoulSharp-master (1)\neeko\bin\Release\Newtonsoft.Json.dll
+C:\Users\Vinh\Desktop\EnsoulSharp-master (1)\neeko\bin\Release\SharpDX.Direct3D9.dll
+C:\Users\Vinh\Desktop\EnsoulSharp-master (1)\neeko\obj\Release\Nekko.csprojAssemblyReference.cache
+C:\Users\Vinh\Desktop\EnsoulSharp-master (1)\neeko\obj\Release\Nekko.csproj.CopyComplete
+C:\Users\Vinh\Desktop\EnsoulSharp-master (1)\neeko\obj\Release\Nekko.exe
+C:\Users\Vinh\Desktop\EnsoulSharp-master (1)\neeko\obj\Release\Nekko.pdb
