@@ -38,7 +38,7 @@ namespace EnsoulSharp.SkinHack
                 foreach (var hero in GameObjects.Heroes.Where(h => !h.CharacterName.Equals("Ezreal")))
                 {
                     var champMenu = new Menu(hero.CharacterName, hero.CharacterName);
-                    champMenu.Add(new MenuSlider("SkinIndex", "Skin Index", 2, 1, 23));
+                    champMenu.Add(new MenuSlider("SkinIndex", "Skin Index", 1, 1, 50));
                     champMenu.GetValue<MenuSlider>("SkinIndex").ValueChanged += (s, e) =>
                     {
                         Console.WriteLine($"[SKINHACK] Skin ID: {champMenu.GetValue<MenuSlider>("SkinIndex").Value}");

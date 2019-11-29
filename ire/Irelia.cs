@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Collections.Generic;
 using SharpDX;
 using EnsoulSharp;
 using EnsoulSharp.SDK;
@@ -9,7 +10,10 @@ using EnsoulSharp.SDK.MenuUI.Values;
 using EnsoulSharp.SDK.Prediction;
 using EnsoulSharp.SDK.Utility;
 
-namespace Nekko
+using Color = System.Drawing.Color;
+using static EnsoulSharp.SDK.Items;
+
+namespace Irelia
 {
     internal class Program
     {
@@ -19,17 +23,21 @@ namespace Nekko
         }
         private static void OnGameLoad()
         {
-            if (ObjectManager.Player.CharacterName != "Neeko")
+            if (ObjectManager.Player.CharacterName != "Irelia")
                 return;
 
-            Nekko.OnLoad();
+            Irelia.OnLoad();
+            Game.Print("<font color=\"#05FAAC\"><b>Irelia Loaded</b></font>");
+            Game.Print("<font color=\"#001FFF\"><b>Auto Setting by ProDragon!!</b></font>");
+
+            Game.Print("<font color=\"#FF0000\"><b>Enjoy your game! xD</b></font>");
         }
     }
     internal class MenuSettings
     {
         public class Combo
         {
-            public static MenuBool setcombo                     = new MenuBool("c", "Combo active");
+            public static Menu setcombo                     = new Menu("c", "Combo active");
             public static MenuSeparator comboSeparator          = new MenuSeparator("comboSeparator", "Combo Settings");
             public static MenuBool useQ                         = new MenuBool("useQ", "Use Q");
             public static MenuBool useW                         = new MenuBool("useW", "Use W");
@@ -44,7 +52,7 @@ namespace Nekko
         }
         public class Harass
         {
-            public static MenuBool setharass                    = new MenuBool("h", "Harass active");
+            public static Menu setharass                    = new Menu("h", "Harass active");
             public static MenuSeparator harassSeparator         = new MenuSeparator("harassSeparator", "Harass Settings");
             public static MenuBool useQ                         = new MenuBool("useQ", "Use Q");
             public static MenuBool useW                         = new MenuBool("useW", "Use W");
@@ -55,7 +63,7 @@ namespace Nekko
         }
         public class LaneClear
         {
-            public static MenuBool setlaneclear = new MenuBool("l", "LaneClear active");
+            public static Menu setlaneclear = new Menu("l", "LaneClear active");
             public static MenuSeparator laneClearSeperator      = new MenuSeparator("laneClearSeperator", "Lane Clear Settings");
             public static MenuBool useQ                         = new MenuBool("useQ", "Use Q");
             public static MenuBool useW                         = new MenuBool("useW", "Use W");
@@ -70,7 +78,7 @@ namespace Nekko
         }
         public class JungleClear
         {
-            public static MenuBool setjungleclear = new MenuBool("j", "JungleClear active");
+            public static Menu setjungleclear = new Menu("j", "JungleClear active");
             public static MenuSeparator jungleClearSeparator    = new MenuSeparator("jungleClearSeparator", "Jungle Clear Settings");
             public static MenuBool useQ                         = new MenuBool("useQ", "Use Q");
             public static MenuBool useW                         = new MenuBool("useW", "Use W");
@@ -88,7 +96,7 @@ namespace Nekko
         }
         public class LastHit
         {
-            public static MenuBool setlasthit = new MenuBool("lh", "LastHit active");
+            public static Menu setlasthit = new Menu("lh", "LastHit active");
             public static MenuSeparator lastHitSeparator        = new MenuSeparator("lastHitSeparator", "Last Hit Settings");
             public static MenuBool useQ                         = new MenuBool("useQ", "Use Q");
             public static MenuSeparator qSettingsSeperator      = new MenuSeparator("qSettingsSeperator", "Q Settings");
@@ -98,7 +106,7 @@ namespace Nekko
         }
         public class Misc
         {
-            public static MenuBool setmisc = new MenuBool("m", "Misc active");
+            public static Menu setmisc = new Menu("m", "Misc active");
             public static MenuSeparator miscSeparator           = new MenuSeparator("miscSeparator", "Misc Settings");
             public static MenuBool interrupter                  = new MenuBool("interrupter", "Interrupter");
             public static MenuBool gapcloser                    = new MenuBool("gapcloser", "Gapcloser");
@@ -108,6 +116,18 @@ namespace Nekko
             public static MenuBool killstealW                   = new MenuBool("killstealW", "Use W");
             public static MenuBool killstealR                   = new MenuBool("killstealR", "Use R");
             public static MenuBool killstealIgnite              = new MenuBool("killstealIgnite", "Use Ignite");
+        }
+
+        public class Item
+        {
+            public static MenuSeparator a = new MenuSeparator("Items Settings", "Items Settings");
+            public static MenuBool b = new MenuBool("hydra", "Use [Hydra] Reset AA");
+            public static MenuBool c = new MenuBool("titanic", "Use [Titanic]");
+            public static MenuBool d = new MenuBool("BOTRK", "Use [Botrk]");
+            public static MenuSlider e = new MenuSlider("ihp", "My HP Use BOTRK <=", 50);
+            public static MenuSlider f = new MenuSlider("ihpp", "Enemy HP Use BOTRK <=", 50);
+
+
         }
         public class Drawing
         {
@@ -129,34 +149,54 @@ namespace Nekko
             public static MenuKeyBind harassToggle              = new MenuKeyBind("harassToggle", "Harass Key", System.Windows.Forms.Keys.H, KeyBindType.Toggle);
             public static MenuKeyBind farmToggle                = new MenuKeyBind("farmToggle", "Spell Farm Key", System.Windows.Forms.Keys.J, KeyBindType.Toggle);        }
     }
-    internal class Nekko
+    internal class Irelia
     {
         private static SpellSlot summonerIgnite;
         private static SpellSlot summonerFlash;
-        private static Spell Q, W, E, R;
         private static AIHeroClient objPlayer = ObjectManager.Player;
         private static Menu myMenu;
+        private static Menu mMenu;
+        public static Spell Ignite;
+        public static Item Hydra;
+        public static Item Tiamat;
+        public static Item Titanic;
+        public static Item Botrk;
+        public static Item Bil;
+        public static Menu Menu, Items, Rset;
+        public static Spell Q, W, E1, E2, R;
+        private static AIBaseClient target;
 
         public static void OnLoad()
         {
-            Q = new Spell(SpellSlot.Q, 800f);
-            Q.SetSkillshot(0.25f, 70f, 1500f, true, SkillshotType.Circle);
+            Q = new Spell(SpellSlot.Q, 600);
+            Q.SetTargetted(0f, float.MaxValue);
 
-            W = new Spell(SpellSlot.W, 600f);
-            W.SetSkillshot(1.25f, 225f, 0, false, SkillshotType.Circle);
+            W = new Spell(SpellSlot.W, 300);
 
-            E = new Spell(SpellSlot.E, 1000f);
-            E.SetSkillshot(0.5f, 140f, 1300, false, SkillshotType.Line);
+            E1 = new Spell(SpellSlot.E, 775);
 
-            R = new Spell(SpellSlot.R, 600f);
+            E2 = new Spell(SpellSlot.E, 775);
 
+
+            R = new Spell(SpellSlot.R, 900);
+            R.SetSkillshot(0.5f, 260, 2000, false, SkillshotType.Line, HitChance.VeryHigh);
+
+            Ignite = new Spell(ObjectManager.Player.GetSpellSlot("summonerdot"), 600);
+            Tiamat = new Item(ItemId.Tiamat_Melee_Only, 400);
+            Hydra = new Item(ItemId.Ravenous_Hydra_Melee_Only, 400);
+            Titanic = new Item(ItemId.Titanic_Hydra, objPlayer.GetRealAutoAttackRange());
+            Botrk = new Item(ItemId.Blade_of_the_Ruined_King, 400);
+            Bil = new Item(3144, 475f);
             summonerFlash = objPlayer.GetSpellSlot("SummonerFlash");
 
 
             #region Menu Init
 
-            myMenu = new Menu(objPlayer.CharacterName, "Neeko", true);
-
+            myMenu = new Menu(objPlayer.CharacterName, "Irelia Beta version", true);
+            mMenu = new Menu(objPlayer.CharacterName, "Feed Back", true);
+            var f1 = new Menu("f1", "All FeedBack send to my FaceBook:");
+            mMenu.Add(f1);
+            var f2 = new Menu("f2", "FB.COM/Vinh.Kevin195");
             var comboMenu = new Menu("comboMenu", "Combo")
             {
                 MenuSettings.Combo.setcombo
@@ -189,13 +229,13 @@ namespace Nekko
 
             var laneClearMenu = new Menu("laneClearMenu", "Lane Clear")
             {
-                MenuSettings.LaneClear.setlaneclear,
+                MenuSettings.LaneClear.setlaneclear
                 //MenuSettings.LaneClear.laneClearSeperator,
                 //MenuSettings.LaneClear.useQ,
                 //MenuSettings.LaneClear.useW,
                 //MenuSettings.LaneClear.qSettingsSeperator,
                 //MenuSettings.LaneClear.autostackClear,
-                MenuSettings.LaneClear.qStackMode
+                //MenuSettings.LaneClear.qStackMode
                 //MenuSettings.LaneClear.wSettingsSeperator,
                 //MenuSettings.LaneClear.minHitsW,
                 //MenuSettings.LaneClear.manaSeperator,
@@ -237,21 +277,26 @@ namespace Nekko
 
             var miscMenu = new Menu("miscMenu", "Misc")
             {
-                MenuSettings.Misc.setmisc
+                MenuSettings.Misc.setmisc,
                 //MenuSettings.Misc.miscSeparator,
                 //MenuSettings.Misc.interrupter,
                 //MenuSettings.Misc.gapcloser,
 
-                //new Menu("killStealMenu", "KillSteal")
-                //{
-                    //MenuSettings.Misc.killStealSeparator,
-                    //MenuSettings.Misc.killstealEnable,
-                    //MenuSettings.Misc.killstealQ,
-                    //MenuSettings.Misc.killstealW,
-                    //MenuSettings.Misc.killstealR,
-                    //MenuSettings.Misc.killstealIgnite,
-                //},
-            };
+                new Menu("item", "Item")
+                {
+
+                }
+
+            //new Menu("killStealMenu", "KillSteal")
+            //{
+            //MenuSettings.Misc.killStealSeparator,
+            //MenuSettings.Misc.killstealEnable,
+            //MenuSettings.Misc.killstealQ,
+            //MenuSettings.Misc.killstealW,
+            //MenuSettings.Misc.killstealR,
+            //MenuSettings.Misc.killstealIgnite,
+            //},
+        };
             myMenu.Add(miscMenu);
 
             var drawingMenu = new Menu("drawingMenu", "Drawings")
@@ -272,13 +317,14 @@ namespace Nekko
 
             #endregion
 
-            Tick.OnTick                     += OnUpdate;
+            Game.OnUpdate                     += OnUpdate;
             Drawing.OnDraw                  += OnDraw;
             Drawing.OnEndScene              += OnEndScene;
             Orbwalker.OnAction              += OnAction;
             Interrupter.OnInterrupterSpell  += OnInterrupterSpell;
             Gapcloser.OnGapcloser           += OnGapcloser;
         }
+
         private static void OnUpdate(EventArgs args)
         {
             if (objPlayer.IsDead || objPlayer.IsRecalling())
@@ -307,21 +353,122 @@ namespace Nekko
 
         #region Orbwalker Modes
 
+
+        public static List<AIMinionClient> GetGenericJungleMinionsTargets()
+        {
+            return GetGenericJungleMinionsTargetsInRange(float.MaxValue);
+        }
+
+        public static List<AIMinionClient> GetGenericJungleMinionsTargetsInRange(float range)
+        {
+            return GameObjects.Jungle.Where(m => !GameObjects.JungleSmall.Contains(m) && m.IsValidTarget(range)).ToList();
+        }
+
+        public static List<AIMinionClient> GetEnemyLaneMinionsTargets()
+        {
+            return GetEnemyLaneMinionsTargetsInRange(float.MaxValue);
+        }
+
+        public static List<AIMinionClient> GetEnemyLaneMinionsTargetsInRange(float range)
+        {
+            return GameObjects.EnemyMinions.Where(m => m.IsValidTarget(range)).ToList();
+        }
         private static void Combo()
         {
-            var target = TargetSelector.GetTarget(Q.Range);
+            var target = TargetSelector.GetTarget(1500);
+            foreach (var minion in GetEnemyLaneMinionsTargetsInRange(Q.Range))
+            {
+                if(minion.Health <= objPlayer.GetSpellDamage(minion, SpellSlot.Q))
+                {
+                    if(minion.Distance(target) < objPlayer.Distance(target))
+                    {
+                        if (Q.IsReady())
+                        {
+                            Q.CastOnUnit(minion);
+                        }
+                    }
+                }
+
+                if (objPlayer.HealthPercent < 70)
+                {
+                    if (minion.Distance(target) < 300 && minion.Health < objPlayer.GetSpellDamage(minion, SpellSlot.Q))
+                    {
+                        if(minion.DistanceToPlayer() > 200)
+                        {
+                            Q.CastOnUnit(minion);
+                        }
+                        if(minion.Distance(target) > 300)
+                        {
+                            Q.CastOnUnit(minion);
+                        }
+                    }
+                    if(objPlayer.Mana <= Q.Mana *2)
+                    {
+                        return;
+                    }
+                }
+
+                if(objPlayer.HealthPercent < 40)
+                {
+                    if(objPlayer.Mana > Q.Mana *2)
+                    {
+                        if(minion.Distance(target) < 300)
+                        {
+                            Q.CastOnUnit(minion);
+                        }
+                    }
+                }
+            }
+
+            if(E1.IsReady())
+            {
+                if(target.IsValidTarget(E1.Range))
+                {
+                    E1.Cast(target.Position);
+                }
+
+            }
+            if (E2.IsReady() && objPlayer.HasBuff("IreliaE"))
+            {
+                if (target.IsValidTarget(E2.Range))
+                {
+                    E2.Cast(target.Position);
+                }
+            }
+
+            if(Q.IsReady())
+            {
+                if(target.HasBuff("ireliamark"))
+                {
+                    if(objPlayer.Distance(target) < Q.Range)
+                    {
+                        Q.CastOnUnit(target);
+                    }
+                }
+            }
+
+            if(R.IsReady())
+            {
+                if(target.Health < 500)
+                {
+                    if(objPlayer.Mana > R.Mana + Q.Mana - 20)
+                    {
+                        R.Cast(target.PreviousPosition);
+                    }
+                }
+            }
 
             if (target == null || target.IsDead || target.IsAlly)
                 return;
 
-            if (E.IsReady() && objPlayer.Mana >= Q.Mana)
+            /*if (E.IsReady() && objPlayer.Mana >= Q.Mana)
             {
                 if (!target.IsValidTarget(E.Range))
                     return;
 
                 var getPrediction = E.GetPrediction(target);
 
-                        if (getPrediction.Hitchance >= HitChance.High)
+                        if (getPrediction.Hitchance >= HitChance.Medium)
                         {
                             E.Cast(target.PreviousPosition);
                         }
@@ -333,9 +480,9 @@ namespace Nekko
 
                 var getPrediction = Q.GetPrediction(target);
 
-                if (getPrediction.CollisionObjects.Count() < 2 && getPrediction.Hitchance >= HitChance.Medium)
+                if (getPrediction.CollisionObjects.Count() < 2 && getPrediction.Hitchance >= HitChance.High)
                     Q.Cast(target.PreviousPosition);
-            }
+            }*/
             /*if (MenuSettings.Combo.useW.Enabled && W.IsReady())
             {
                 if (!target.IsValidTarget(W.Range - 50))
@@ -361,25 +508,26 @@ namespace Nekko
                         break;
                 }
             }*/
-            if (R.IsReady())
+            /*if (R.IsReady())
             {
                 var getPrediction = R.GetPrediction(target);
 
-                /*if (Q.IsReady() && getDamage(target, true, false, false, false) > target.Health)
+                if (!target.IsValidTarget(R.Range + 100))
+                    return;
+                if (Q.IsReady() && getDamage(target, true, false, false, false) > target.Health)
                     return;
 
                 if (E.IsReady() && getDamage(target, false, false, true, false) > target.Health)
-                    return;*/
-                    //must fixed wait for prodragon
+                    return;
 
-                if(target.IsValidTarget(600))
+                if(target.IsValidTarget(R.Range))
                 {
                     if(objPlayer.Mana >= R.Mana + Q.Mana)
                     {
                         if(target.Health <= getDamage(target, true,false, false, true))
                         {
                             R.Cast();
-                            DelayAction.Add(900, () =>
+                            DelayAction.Add(1100, () =>
                             {
                                 Q.Cast(target.PreviousPosition);
                             });
@@ -408,9 +556,9 @@ namespace Nekko
                 if (target.Health < getDamage(target, false, false, true, false))
                 {
                     R.Cast();
-                    DelayAction.Add(100, () =>
+                    DelayAction.Add(0, () =>
                     {
-                        W.Cast();
+                        W.Cast(target.PreviousPosition);
                     });
                 }
 
@@ -420,7 +568,7 @@ namespace Nekko
                 }
 
 
-                if (!target.IsValidTarget(600))
+                if (!target.IsValidTarget(800))
                 {
 
                     if (objPlayer.CountEnemyHeroesInRange(700) <= 2)
@@ -430,11 +578,11 @@ namespace Nekko
                         if (summonerFlash.IsReady())
                         {
                             R.Cast();
-                            DelayAction.Add(900, () =>
+                            DelayAction.Add(1000, () =>
                             {
-                                if (target.IsValidTarget(600))
+                                if (target.IsValidTarget(900))
                                 {
-                                    if(target.IsUnderEnemyTurret(100))
+                                    if(target.IsUnderEnemyTurret(200))
                                     {
                                         return;
                                     }
@@ -449,38 +597,23 @@ namespace Nekko
                     }
                 }
 
-            }
+            }*/
+
             if (summonerIgnite.IsReady())
             {
                 if (!target.IsValidTarget(600))
                     return;
 
+                if (target.Health < getDamage(target, true, false, false, true))
+                    objPlayer.Spellbook.CastSpell(summonerIgnite, target);
                 if (target.Health < getDamage(target, false, false, false, true))
                     objPlayer.Spellbook.CastSpell(summonerIgnite, target);
             }
         }
 
-        private static void autow()
-        {
-            var target = Orbwalker.GetTarget() as AIHeroClient;
-            if (R.Cast())
-            {
-                if (W.IsReady() && objPlayer.Mana >= Q.Mana + E.Mana)
-                {
-                    W.Cast();
-                }
-            }
-
-            if(target.IsValidTarget(200))
-            {
-                W.Cast(target.PreviousPosition);
-            }
-        }
         private static void Harass()
         {
-            if (!MenuSettings.Keys.harassToggle.Active)
-                return;
-            if (objPlayer.ManaPercent < 30)
+            /*if (objPlayer.ManaPercent < 30)
                 return;
 
             var target = TargetSelector.GetTarget(Q.Range);
@@ -490,7 +623,7 @@ namespace Nekko
 
             if (Q.IsReady())
             {
-                if (!target.IsValidTarget(E.Range - 50))
+                if (!target.IsValidTarget(E1.Range - 50))
                     return;
 
                 var getPrediction = E.GetPrediction(target);
@@ -511,23 +644,21 @@ namespace Nekko
                         {
                             Q.Cast(getPrediction.CastPosition);
                         }               
-            }
+            }*/
         }
         private static void LaneClear()
         {
-            var allMinions = GameObjects.EnemyMinions.Where(x => x.IsMinion() && !x.IsDead).OrderBy(x => x.Distance(objPlayer.Position));
+            /*var allMinions = GameObjects.EnemyMinions.Where(x => x.IsMinion() && !x.IsDead).OrderBy(x => x.Distance(objPlayer.Position));
 
             if (allMinions.Count() == 0)
                 return;
             
             if (Q.IsReady())
             {
-                if (objPlayer.ManaPercent < 40)
+                if (objPlayer.ManaPercent < 30)
                     return;
 
-                if (MenuSettings.LaneClear.autostackClear.Enabled)
-                {
-                    foreach (var min in allMinions.Where(x => x.IsValidTarget(Q.Range - 15) && x.Health < Q.GetDamage(x)))
+                    foreach (var min in allMinions.Where(x => x.IsValidTarget(Q.Range) && x.Health < Q.GetDamage(x)))
                     {
                         var getPrediction = Q.GetPrediction(min, true);
                         var getCollisions = getPrediction.CollisionObjects.ToList();
@@ -556,12 +687,38 @@ namespace Nekko
                                 break;
                         }
                     }
+                
+            }*/
+
+            foreach (var minion in GetEnemyLaneMinionsTargetsInRange(Q.Range))
+            {
+                if (minion.Health <= GameObjects.Player.GetSpellDamage(minion, SpellSlot.Q) && Q.IsReady() && objPlayer.ManaPercent > 30)
+                {
+                    Q.Cast(minion);                                          
                 }
             }
         }
         private static void JungleClear()
         {
-                                                      
+            var mob = GameObjects.Jungle
+                .Where(x => x.IsValidTarget(Q.Range) && x.GetJungleType() != JungleType.Unknown)
+                .OrderByDescending(x => x.MaxHealth).FirstOrDefault();
+
+            if (mob != null)
+            {
+                if(E1.IsReady() && mob.IsValidTarget(E1.Range))
+                {
+                    E1.Cast(mob.Position);
+                }
+                if(E2.IsReady() && mob.IsValidTarget(E2.Range) && objPlayer.HasBuff("IreliaE"))
+                {
+                    E2.Cast(mob.Position);
+                }
+                if(Q.IsReady() && mob.HasBuff("ireliamark"))
+                {
+                    Q.CastOnUnit(mob);
+                }
+            }
         }
         private static void LastHit()
         {
@@ -602,23 +759,9 @@ namespace Nekko
         }
         private static void OnInterrupterSpell(AIHeroClient sender, Interrupter.InterruptSpellArgs arg)
         {
-            if (!E.IsReady())
-                return;
-
-            if (sender.IsEnemy && sender.DistanceToPlayer() < 550)
-            {
-                var extendPosition = sender.Position.Extend(objPlayer.Position, 300);
-                E.Cast(extendPosition);
-            }
         }
         private static void OnGapcloser(AIHeroClient sender, Gapcloser.GapcloserArgs args)
         {
-            var target = TargetSelector.GetTarget(Q.Range);
-            if (args != null && args.EndPosition.DistanceToPlayer() < 250)
-                W.Cast(objPlayer.Position);
-
-            if (args != null && args.EndPosition.DistanceToPlayer() < 350)
-                E.Cast(target.PreviousPosition);
         }
 
         #endregion
@@ -638,17 +781,13 @@ namespace Nekko
             {
                 Render.Circle.DrawCircle(objPlayer.Position, W.Range, System.Drawing.Color.Beige);
             }
-            if (E.IsReady())
+            if (E1.IsReady() || E2.IsReady())
             {
                 Render.Circle.DrawCircle(objPlayer.Position, W.Range, System.Drawing.Color.DodgerBlue);
             }
             if (R.IsReady())
             {
                 Drawing.DrawCircle(objPlayer.Position, R.Range, System.Drawing.Color.DarkBlue);
-            }
-            if (R.IsReady() && summonerFlash.IsReady())
-            {
-                Drawing.DrawCircle(objPlayer.Position, 800, System.Drawing.Color.DarkBlue);
             }
         }
         private static void OnEndScene(EventArgs args)
@@ -667,6 +806,7 @@ namespace Nekko
                 if (damage > target.Health)
                 {
                     Drawing.DrawText(hpBar.X + 69, hpBar.Y - 45, System.Drawing.Color.Red, "KILLABLE");
+                    Drawing.DrawText(hpBar.X + 69, hpBar.Y + 45, System.Drawing.Color.YellowGreen, "KILL HIM! HE IS RUNNING OUT!");
                 }
 
                 var damagePercentage = ((target.Health - damage) > 0 ? (target.Health - damage) : 0) / target.MaxHealth;
@@ -682,29 +822,17 @@ namespace Nekko
         #endregion
 
         #region Misc
-
+       
         private static void KillSteal()
         {
-                foreach (var target in GameObjects.EnemyHeroes.Where(x => x.IsValidTarget(Q.Range)))
-            {
-
-                if (Q.IsReady() && target.IsValidTarget(Q.Range))
+                var target = TargetSelector.GetTarget(1500);
+                if (Q.IsReady())
                 {
-                    var getPrediction = Q.GetPrediction(target);
-                    if (target.Health < Q.GetDamage(target) / 3 && Q.IsReady())
-                        return;
-
-                    if (target.Health + target.MagicalShield < Q.GetDamage(target) / 2)
-                        Q.Cast(getPrediction.CastPosition);
-                }
-                if (E.IsReady() && target.IsValidTarget(E.Range - 100))
-                {
-                    var getPrediction = E.GetPrediction(target);
-
-                    if (target.Health + target.MagicalShield < E.GetDamage(target) && getPrediction.CollisionObjects.Count() < 5)
+                    if(target.IsValidTarget(600))
                     {
-                        Q.Cast(getPrediction.CastPosition);
+                    Q.CastOnUnit(target);           
                     }
+
                 }                
                 if (summonerIgnite.IsReady() && target.IsValidTarget(600))
                 {
@@ -713,7 +841,7 @@ namespace Nekko
                         objPlayer.Spellbook.CastSpell(summonerIgnite, target);
                     }
                 }
-            }
+            
         }
 
         #region Extensions
