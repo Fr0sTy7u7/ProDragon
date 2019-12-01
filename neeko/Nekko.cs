@@ -9,7 +9,7 @@ using EnsoulSharp.SDK.MenuUI.Values;
 using EnsoulSharp.SDK.Prediction;
 using EnsoulSharp.SDK.Utility;
 
-namespace Nekko
+namespace Swain
 {
     internal class Program
     {
@@ -19,10 +19,10 @@ namespace Nekko
         }
         private static void OnGameLoad()
         {
-            if (ObjectManager.Player.CharacterName != "Neeko")
+            if (ObjectManager.Player.CharacterName != "Swain")
                 return;
 
-            Nekko.OnLoad();
+            Swain.OnLoad();
         }
     }
     internal class MenuSettings
@@ -129,7 +129,7 @@ namespace Nekko
             public static MenuKeyBind harassToggle              = new MenuKeyBind("harassToggle", "Harass Key", System.Windows.Forms.Keys.H, KeyBindType.Toggle);
             public static MenuKeyBind farmToggle                = new MenuKeyBind("farmToggle", "Spell Farm Key", System.Windows.Forms.Keys.J, KeyBindType.Toggle);        }
     }
-    internal class Nekko
+    internal class Swain
     {
         private static SpellSlot summonerIgnite;
         private static SpellSlot summonerFlash;
@@ -139,8 +139,8 @@ namespace Nekko
 
         public static void OnLoad()
         {
-            Q = new Spell(SpellSlot.Q, 800f);
-            Q.SetSkillshot(0.25f, 70f, 1500f, true, SkillshotType.Circle);
+            Q = new Spell(SpellSlot.Q, 400f);
+            Q.SetSkillshot(0f, 70f, 1500f, true, SkillshotType.Circle);
 
             W = new Spell(SpellSlot.W, 600f);
             W.SetSkillshot(1.25f, 225f, 0, false, SkillshotType.Circle);

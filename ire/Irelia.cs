@@ -163,7 +163,7 @@ namespace Irelia
         public static Item Botrk;
         public static Item Bil;
         public static Menu Menu, Items, Rset;
-        public static Spell Q, W, E1, E2, R;
+        public static Spell Q, W, E, R;
         private static AIBaseClient target;
 
         public static void OnLoad()
@@ -173,9 +173,8 @@ namespace Irelia
 
             W = new Spell(SpellSlot.W, 300);
 
-            E1 = new Spell(SpellSlot.E, 775);
+            E = new Spell(SpellSlot.E, 775);
 
-            E2 = new Spell(SpellSlot.E, 775);
 
 
             R = new Spell(SpellSlot.R, 900);
@@ -337,6 +336,7 @@ namespace Irelia
             {
                 case OrbwalkerMode.Combo:
                     Combo();
+                    logicE();
                     break;
                 case OrbwalkerMode.Harass:
                     Harass();
@@ -420,21 +420,22 @@ namespace Irelia
                 }
             }
 
-            if(E1.IsReady())
+            if(E.IsReady())
             {
-                if(target.IsValidTarget(E1.Range))
+                if(target.IsValidTarget(E.Range))
                 {
-                    E1.Cast(target.Position);
+                    E.Cast(target.Position);
                 }
 
             }
-            if (E2.IsReady() && objPlayer.HasBuff("IreliaE"))
+            if (E.IsReady() && objPlayer.HasBuff("IreliaE"))
             {
-                if (target.IsValidTarget(E2.Range))
+                if (target.IsValidTarget(E.Range))
                 {
-                    E2.Cast(target.Position);
+                    E.Cast(target.Position);
                 }
             }
+
 
             if(Q.IsReady())
             {
@@ -449,7 +450,7 @@ namespace Irelia
 
             if(R.IsReady())
             {
-                if(target.Health < 500)
+                if(target.Health < 700)
                 {
                     if(objPlayer.Mana > R.Mana + Q.Mana - 20)
                     {
@@ -611,6 +612,22 @@ namespace Irelia
             }
         }
 
+        private static void logicE()
+        {
+            var t = TargetSelector.GetTarget(E.Range, DamageType.Magical);
+            var vec = t.PreviousPosition - objPlayer.PreviousPosition;
+            var castBehind = E.GetPrediction(t).CastPosition + Vector3.Normalize(vec) * 75;
+            var castinform = E.GetPrediction(t).CastPosition - Vector3.Normalize(vec) * 75;
+            if (E.IsReady() && objPlayer.HasBuff("IreliaE"))
+            {
+                E.Cast(castBehind);
+            }
+            else
+            {
+                E.Cast(castinform);
+            }
+        }
+
         private static void Harass()
         {
             /*if (objPlayer.ManaPercent < 30)
@@ -706,13 +723,13 @@ namespace Irelia
 
             if (mob != null)
             {
-                if(E1.IsReady() && mob.IsValidTarget(E1.Range))
+                if(E.IsReady() && mob.IsValidTarget(E.Range))
                 {
-                    E1.Cast(mob.Position);
+                    E.Cast(mob.Position);
                 }
-                if(E2.IsReady() && mob.IsValidTarget(E2.Range) && objPlayer.HasBuff("IreliaE"))
+                if(E.IsReady() && mob.IsValidTarget(E.Range) && objPlayer.HasBuff("IreliaE"))
                 {
-                    E2.Cast(mob.Position);
+                    E.Cast(mob.Position);
                 }
                 if(Q.IsReady() && mob.HasBuff("ireliamark"))
                 {
@@ -781,7 +798,7 @@ namespace Irelia
             {
                 Render.Circle.DrawCircle(objPlayer.Position, W.Range, System.Drawing.Color.Beige);
             }
-            if (E1.IsReady() || E2.IsReady())
+            if (E.IsReady())
             {
                 Render.Circle.DrawCircle(objPlayer.Position, W.Range, System.Drawing.Color.DodgerBlue);
             }
