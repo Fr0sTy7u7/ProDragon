@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Collections.Generic;
 using Color = System.Drawing.Color;
 using SharpDX;
 using EnsoulSharp;
@@ -9,6 +10,7 @@ using EnsoulSharp.SDK.MenuUI;
 using EnsoulSharp.SDK.MenuUI.Values;
 using EnsoulSharp.SDK.Prediction;
 using EnsoulSharp.SDK.Utility;
+
 
 namespace Swain
 {
@@ -24,6 +26,16 @@ namespace Swain
                 return;
 
             Swain.OnLoad();
+            var not1 = new Notification("ProDragon Swain", "Swain loaded \n And don't forget to give me feedback :) ");
+            var not2 = new Notification("Combo", "Q, W, E, R auto active \n Q set max dame \n W logic slow");
+            var not3 = new Notification("LastHit", "Q, W, E auto active \n Flash KS(Beta)");
+
+            Notifications.Add(not1);
+            Notifications.Add(not2);
+            Notifications.Add(not3);
+            DelayAction.Add(30000, (() => { Notifications.Remove(not1); }));
+            DelayAction.Add(30000, (() => { Notifications.Remove(not2); }));
+            DelayAction.Add(30000, (() => { Notifications.Remove(not3); }));
         }
     }
     internal class MenuSettings
@@ -79,6 +91,8 @@ namespace Swain
     }
     internal class Swain
     {
+        public static List<GameObject> Missiles = new List<GameObject>();
+        public static List<int> NetworkIDs = new List<int>();
         private static SpellSlot Flash;
         private static SpellSlot Ignite;
         private static Spell Q, W, E, R;
@@ -166,8 +180,11 @@ namespace Swain
 
             #endregion
 
-            Tick.OnTick += OnUpdate;
+            Game.OnUpdate += OnUpdate;
             Drawing.OnDraw += OnDraw;
+            MissileClient.OnDelete += MissileClientOnOnDelete;
+            MissileClient.OnCreate += MissileClientOnOnCreate;
+            Gapcloser.OnGapcloser += GapcloserOnOnGapcloser;
         }
         private static void OnUpdate(EventArgs args)
         {
@@ -204,7 +221,7 @@ namespace Swain
 
                 if (Q.IsReady())
                 {
-                    Render.Circle.DrawCircle(me.Position, Q.Range, Color.Red, 50);
+                    Render.Circle.DrawCircle(me.Position, Q.Range, Color.Red, 20);
                 }
                 if (E.IsReady())
                 {
@@ -214,6 +231,31 @@ namespace Swain
                 {
                     Render.Circle.DrawCircle(me.Position, E.Range, Color.Red, 5);
                 }
+            }
+        }
+
+        private static void MissileClientOnOnDelete(GameObject sender, EventArgs args)
+        {
+            foreach (var networkID in Missiles)
+            {
+                foreach (var iD in NetworkIDs)
+                {
+                    if (networkID.NetworkId == iD)
+                    {
+                        DelayAction.Add(6000, (() => {
+                            NetworkIDs.Remove(iD);
+                            Missiles.Remove(networkID);
+                        }));
+                    }
+                }
+            }
+        }
+        private static void MissileClientOnOnCreate(GameObject sender, EventArgs args)
+        {
+            if (sender.Name == "Feather")
+            {
+                Missiles.Add(sender);
+                NetworkIDs.Add(Convert.ToInt32(sender.NetworkId));
             }
         }
 
@@ -248,72 +290,93 @@ namespace Swain
 
         public static void Combo()
         {
-            var tq = TargetSelector.GetTarget(Q.Range);
-            if (tq.Health > me.GetSpellDamage(tq, SpellSlot.Q))
+            var target = TargetSelector.GetTarget(1000, DamageType.Physical);
+            if (target != null)
             {
-                if (tq.IsValidTarget(Q.Range - 100))
+                var tq = TargetSelector.GetTarget(Q.Range);
+                if (tq.Health > me.GetSpellDamage(tq, SpellSlot.Q))
                 {
-                    Q.Cast(tq.Position);
-                }
-            }
-            if (tq.Health <= me.GetSpellDamage(tq, SpellSlot.Q))
-            {
-                if (tq.IsValidTarget(Q.Range))
-                {
-                    Q.Cast(tq.Position);
-                }
-            }
-            var tw = TargetSelector.GetTarget(W.Range);
-            if (tw.Health <= me.GetSpellDamage(tw, SpellSlot.W))
-            {
-                if (tq.IsValidTarget(W.Range))
-                {
-                    W.Cast(tw.PreviousPosition);
-                }
-            }
-            if (tw.Health > me.GetSpellDamage(tw, SpellSlot.W))
-            {
-                if (tw.DistanceToPlayer() > me.GetRealAutoAttackRange())
-                {
-                    W.Cast(tw.PreviousPosition);
-                }
-            }
-            var te = TargetSelector.GetTarget(E.Range);
-            if (te.Health > me.GetSpellDamage(te, SpellSlot.E))
-            {
-                if (te.IsValidTarget(E.Range - 100))
-                {
-                    E.Cast(te.PreviousPosition);
-                }
-            }
-            if (te.Health <= me.GetSpellDamage(te, SpellSlot.E))
-            {
-                if (te.IsValidTarget(E.Range))
-                {
-                    E.Cast(te.PreviousPosition);
-                }
-            }
-            var tr = TargetSelector.GetTarget(R.Range);
-            if (tr.IsValidTarget(R.Range))
-            {
-                if (me.HealthPercent < 30)
-                {
-                    if (tr.HealthPercent > 30)
+                    if (tq.IsValidTarget(Q.Range - 100))
                     {
-                        R.Cast();
+                        Q.Cast(tq.Position);
+return;
                     }
                 }
-                if (me.HealthPercent < 20)
+                if (tq.Health <= me.GetSpellDamage(tq, SpellSlot.Q))
                 {
-                    R.Cast();
+                    if (tq.IsValidTarget(Q.Range))
+                    {
+                        Q.Cast(tq.Position);
+return;
+                    }
                 }
-                if (me.CountEnemyHeroesInRange(500) > 3)
+                var tw = TargetSelector.GetTarget(W.Range);
+                if (tw.Health <= me.GetSpellDamage(tw, SpellSlot.W))
                 {
-                    R.Cast();
+                    if (tq.IsValidTarget(W.Range))
+                    {
+                        W.Cast(tw.PreviousPosition);
+return;
+                    }
                 }
-                if(me.GetSpellDamage(tr, SpellSlot.R) + me.GetSpellDamage(tq, SpellSlot.Q) > tr.Health)
+                if (tw.Health > me.GetSpellDamage(tw, SpellSlot.W))
                 {
-                    R.Cast();
+                    if (tw.DistanceToPlayer() > me.GetRealAutoAttackRange())
+                    {
+                        W.Cast(tw.PreviousPosition);
+return;
+                    }
+                    if (me.CountEnemyHeroesInRange(700) > 1)
+                    {
+                        W.Cast(tw);
+return;
+                    }
+                }
+                var te = TargetSelector.GetTarget(E.Range);
+                if (te.Health > me.GetSpellDamage(te, SpellSlot.E))
+                {
+                    if (te.IsValidTarget(E.Range - 100))
+                    {
+                        E.Cast(te.PreviousPosition);
+                        Orbwalker.Attack(te);
+return;
+                    }
+                }
+                if (te.Health <= me.GetSpellDamage(te, SpellSlot.E))
+                {
+                    if (te.IsValidTarget(E.Range))
+                    {
+                        E.Cast(te.PreviousPosition);
+                        Orbwalker.Attack(te);
+return;
+                    }
+                }
+                var tr = TargetSelector.GetTarget(R.Range);
+                if (tr.IsValidTarget(R.Range))
+                {
+                    if (me.HealthPercent < 30)
+                    {
+                        if (tr.HealthPercent > 30)
+                        {
+                            R.Cast();
+return;
+                        }
+                    }
+                    if (me.HealthPercent < 20)
+                    {
+                        R.Cast();
+return;
+                    }
+                    if (me.CountEnemyHeroesInRange(500) >= 3)
+                    {
+                        R.Cast();
+return;
+                    }
+                    if (me.GetSpellDamage(tr, SpellSlot.R) + me.GetSpellDamage(tq, SpellSlot.Q) > tr.Health)
+                    {
+                        R.Cast();
+return;
+                    }
                 }
             }
         }
@@ -327,11 +390,12 @@ namespace Swain
 
             if (tq.Health <= me.GetSpellDamage(tq, SpellSlot.Q))
             {
-                if (tq.IsValidTarget(Q.Range))
+                if (tq.IsValidTarget(Q.Range + 100))
                 {
                     if (Q.IsReady())
                     {
                         Q.Cast(tq.Position);
+return;
                     }
                 }
             }
@@ -342,6 +406,7 @@ namespace Swain
                     if (W.IsReady())
                     {
                         W.Cast(tw.PreviousPosition);
+return;
                     }
                 }
             }
@@ -352,6 +417,7 @@ namespace Swain
                     if (E.IsReady())
                     {
                         E.Cast(te.PreviousPosition);
+return;
                     }
                 }
             }
@@ -364,6 +430,7 @@ namespace Swain
                         if (me.HasBuff("SwainR"))
                         {
                             R.Cast();
+return;
                         }
                     }
                 }
@@ -385,6 +452,7 @@ namespace Swain
                                 {
                                     Q.Cast(tq.Position);
                                 });
+return;
                             }
                         }
                     }
@@ -407,6 +475,7 @@ namespace Swain
                                     {
                                         me.Spellbook.CastSpell(Flash, tr.Position);
                                     });
+return;
                                 }
                             }
                         }
@@ -456,6 +525,15 @@ namespace Swain
                     }
                 }
 
+            }
+        }
+
+        private static void GapcloserOnOnGapcloser(AIHeroClient sender, Gapcloser.GapcloserArgs args)
+        {
+            if (!sender.IsEnemy) return;
+            if (E.IsReady() && sender.IsValidTarget(E.Range))
+            {
+                E.Cast(sender);
             }
         }
     }
