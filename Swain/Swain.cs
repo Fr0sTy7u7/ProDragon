@@ -204,7 +204,7 @@ namespace Swain
 
                 if (Q.IsReady())
                 {
-                    Render.Circle.DrawCircle(me.Position, Q.Range, Color.Red, );
+                    Render.Circle.DrawCircle(me.Position, Q.Range, Color.Red, 50);
                 }
                 if (E.IsReady())
                 {
