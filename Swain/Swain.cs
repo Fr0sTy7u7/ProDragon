@@ -160,6 +160,7 @@ namespace Swain
                 //MenuSettings.Drawing.dE,
             };
             mn.Add(drawingMenu);
+            mn.Add(MenuSettings.clear.qStackMode);
 
             mn.Attach();
 
@@ -203,11 +204,11 @@ namespace Swain
 
                 if (Q.IsReady())
                 {
-                    Render.Circle.DrawCircle(me.Position, Q.Range, Color.Red, 5);
+                    Render.Circle.DrawCircle(me.Position, Q.Range, Color.Red, );
                 }
                 if (E.IsReady())
                 {
-                    Render.Circle.DrawCircle(me.Position, E.Range, Color.Yellow, 5);
+                    Render.Circle.DrawCircle(me.Position, E.Range, Color.Yellow, 1);
                 }
                 if (R.IsReady())
                 {
