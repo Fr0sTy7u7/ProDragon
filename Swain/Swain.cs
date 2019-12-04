@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.Collections.Generic;
-using Color = System.Drawing.Color;
 using SharpDX;
 using EnsoulSharp;
 using EnsoulSharp.SDK;
@@ -10,7 +8,6 @@ using EnsoulSharp.SDK.MenuUI;
 using EnsoulSharp.SDK.MenuUI.Values;
 using EnsoulSharp.SDK.Prediction;
 using EnsoulSharp.SDK.Utility;
-
 
 namespace Swain
 {
@@ -27,171 +24,137 @@ namespace Swain
 
             Swain.OnLoad();
             var not1 = new Notification("ProDragon Swain", "Swain loaded \n And don't forget to give me feedback :) ");
-            var not2 = new Notification("Combo", "Q, W, E, R auto active \n Q set max dame \n W logic slow");
-            var not3 = new Notification("LastHit", "Q, W, E auto active \n Flash KS(Beta)");
-
+            var not2 = new Notification("Combo", "Q, W, E, R auto active");
+            var not3 = new Notification("killsteal", "Q, W, E auto active");
             Notifications.Add(not1);
             Notifications.Add(not2);
             Notifications.Add(not3);
-            DelayAction.Add(30000, (() => { Notifications.Remove(not1); }));
-            DelayAction.Add(30000, (() => { Notifications.Remove(not2); }));
-            DelayAction.Add(30000, (() => { Notifications.Remove(not3); }));
         }
     }
     internal class MenuSettings
     {
         public class Combo
         {
-            public static readonly MenuBool c = new MenuBool("c", "Combo Active");
-            public static readonly MenuBool cQ = new MenuBool("cQ", "Use Q");
-            public static readonly MenuBool cW = new MenuBool("cW", "Use W");
-            public static readonly MenuBool cE = new MenuBool("cE", "Use E");
-            public static readonly MenuBool cR = new MenuBool("cR", "Use R");
+            public static Menu set = new Menu("setcombo", "Combo");
         }
         public class Harass
         {
-            public static readonly MenuBool h = new MenuBool("h", "Harass Active");
-            public static readonly MenuBool hQ = new MenuBool("hQ", "Use Q");
-            public static readonly MenuBool hW = new MenuBool("hW", "Use W");
-            public static readonly MenuBool hE = new MenuBool("hE", "Use E");
+            public static Menu set = new Menu("setharass", "Harass");
         }
         public class LaneClear
         {
-
-            public static readonly MenuBool l = new MenuBool("l", "LaneClear Active");
-            public static readonly MenuBool lQ = new MenuBool("useQ", "Use Q");
-            public static readonly MenuBool lW = new MenuBool("useW", "Use W");
+            public static Menu set = new Menu("setlc", "Lane Clear");
         }
         public class JungleClear
         {
-            public static readonly MenuBool j = new MenuBool("j", "JungleClear Active");
-            public static readonly MenuBool jQ = new MenuBool("useQ", "Use Q");
-            public static readonly MenuBool jW = new MenuBool("useW", "Use W");
+            public static Menu set = new Menu("setjc", "Jungle Clear");
         }
         public class LastHit
         {
-            public static readonly MenuBool l = new MenuBool("l", "LastHit Active");
-            public static readonly MenuBool lQ = new MenuBool("useQ", "Use Q");
-            public static readonly MenuBool lW = new MenuBool("useW", "Use W");
+            public static Menu set = new Menu("setlh", "Last Hit");
+        }
+        public class Misc
+        {
+            public static Menu set = new Menu("setm", "Some Misc");
         }
         public class Drawing
         {
-            public static readonly MenuBool d = new MenuBool("d", "Drawing Active");
-            public static readonly MenuBool dR = new MenuBool("dr", "Drawing R gapcloser");
-
-            public static readonly MenuBool dQ = new MenuBool("dQ", "Draw Q");
-            public static readonly MenuBool dW = new MenuBool("dW", "Draw W");
-            public static readonly MenuBool dE = new MenuBool("dE", "Draw E");
-
+            public static Menu set = new Menu("setd", "Drawing");
         }
-        public class clear
+        public class Credits
         {
-            public static MenuList qStackMode = new MenuList("qStackMode", "Select Mode:", new[] { "LastHit 1 Minion", "LastHit >= 2 Minions" }, 2);
+        }
+        public class Keys
+        {
         }
     }
     internal class Swain
     {
-        public static List<GameObject> Missiles = new List<GameObject>();
-        public static List<int> NetworkIDs = new List<int>();
-        private static SpellSlot Flash;
-        private static SpellSlot Ignite;
+        private static SpellSlot summonerIgnite;
         private static Spell Q, W, E, R;
-        private static AIHeroClient me = ObjectManager.Player;
-        private static Menu mn;
+        private static AIHeroClient objPlayer = ObjectManager.Player;
+        private static Menu myMenu;
 
         public static void OnLoad()
         {
-            Q = new Spell(SpellSlot.Q, 600f);
-            Q.SetSkillshot(0f, 200, 99999, false, SkillshotType.Cone);
+            Q = new Spell(SpellSlot.Q, 650f);
+            Q.SetSkillshot(0.25f, 200f, 9999f, true, SkillshotType.Cone);
 
             W = new Spell(SpellSlot.W, 3500f);
-            W.SetSkillshot(1f, 250, 0, false, SkillshotType.Circle);
+            W.SetSkillshot(2f, 225f, 0, false, SkillshotType.Circle);
 
-            E = new Spell(SpellSlot.E, 850f);
-            E.SetSkillshot(0.5f, 100, 1200, false, SkillshotType.Line, HitChance.High);
+            E = new Spell(SpellSlot.E, 700f);
+            E.SetSkillshot(0.5f, 140f, 1200, false, SkillshotType.Line);
 
-            R = new Spell(SpellSlot.R, 650f);
-
-            Ignite = me.GetSpellSlot("summonerdot");
-            Flash = me.GetSpellSlot("SummonerFlash");
-
-
-
-            mn = new Menu(me.CharacterName, "Swain by ProDragon", true);
+            R = new Spell(SpellSlot.R, 600f);
 
             #region Menu Init
 
+            myMenu = new Menu(objPlayer.CharacterName, "Swain", true);
+
             var comboMenu = new Menu("comboMenu", "Combo")
             {
-                MenuSettings.Combo.c
-                //MenuSettings.Combo.cQ,
-                //MenuSettings.Combo.cW,
-                //MenuSettings.Combo.cE,
-                //MenuSettings.Combo.cR,
+                MenuSettings.Combo.set
             };
-            mn.Add(comboMenu);
+            myMenu.Add(comboMenu);
 
             var harassMenu = new Menu("harassMenu", "Harass")
             {
-                MenuSettings.Harass.h
-                //MenuSettings.Harass.hQ,
-                //MenuSettings.Harass.hW,
-                //MenuSettings.Harass.hE
+                MenuSettings.Harass.set
             };
-            mn.Add(harassMenu);
+            myMenu.Add(harassMenu);
 
             var laneClearMenu = new Menu("laneClearMenu", "Lane Clear")
             {
-                MenuSettings.LaneClear.l
-                //MenuSettings.LaneClear.lQ,
-                //MenuSettings.LaneClear.lW
+                MenuSettings.LaneClear.set
             };
-            mn.Add(laneClearMenu);
+            myMenu.Add(laneClearMenu);
 
             var jungleClearMenu = new Menu("jungleClearMenu", "Jungle Clear")
             {
-                MenuSettings.JungleClear.j
-                //MenuSettings.JungleClear.jQ,
-                //MenuSettings.JungleClear.jW
+                MenuSettings.JungleClear.set
             };
-            mn.Add(jungleClearMenu);
+            myMenu.Add(jungleClearMenu);
 
             var lastHitMenu = new Menu("lastHitMenu", "Last Hit")
             {
-                MenuSettings.LastHit.l
-                //MenuSettings.LastHit.lQ,
-                //MenuSettings.LastHit.lW
-
+                MenuSettings.LastHit.set
             };
-            mn.Add(lastHitMenu);
+            myMenu.Add(lastHitMenu);
 
-            var drawingMenu = new Menu("drawingMenu", "Drawing")
+            var miscMenu = new Menu("miscMenu", "Misc")
             {
-                MenuSettings.Drawing.d,
-                MenuSettings.Drawing.dR
-                //MenuSettings.Drawing.dQ,
-                //MenuSettings.Drawing.dW,
-                //MenuSettings.Drawing.dE,
+                MenuSettings.Misc.set
             };
-            mn.Add(drawingMenu);
-            mn.Add(MenuSettings.clear.qStackMode);
+            myMenu.Add(miscMenu);
 
-            mn.Attach();
+            var drawingMenu = new Menu("drawingMenu", "Drawings")
+            {
+                MenuSettings.Drawing.set
+            };
+            myMenu.Add(drawingMenu);
+
+
+
+            myMenu.Attach();
 
             #endregion
 
-            Game.OnUpdate += OnUpdate;
-            Drawing.OnDraw += OnDraw;
-            MissileClient.OnDelete += MissileClientOnOnDelete;
-            MissileClient.OnCreate += MissileClientOnOnCreate;
-            Gapcloser.OnGapcloser += GapcloserOnOnGapcloser;
+            Tick.OnTick                     += OnUpdate;
+            Drawing.OnDraw                  += OnDraw;
+            Drawing.OnEndScene              += OnEndScene;
+            Orbwalker.OnAction              += OnAction;
+            Interrupter.OnInterrupterSpell  += OnInterrupterSpell;
+            Gapcloser.OnGapcloser           += OnGapcloser;
         }
         private static void OnUpdate(EventArgs args)
         {
-            if (me.IsDead || me.IsRecalling())
+            if (objPlayer.IsDead || objPlayer.IsRecalling())
                 return;
             if (MenuGUI.IsChatOpen || MenuGUI.IsShopOpen)
                 return;
+
+                KillSteal();
 
             switch (Orbwalker.ActiveMode)
             {
@@ -199,342 +162,258 @@ namespace Swain
                     Combo();
                     break;
                 case OrbwalkerMode.Harass:
+                    Harass();
                     break;
                 case OrbwalkerMode.LaneClear:
-                    clear();
+                    LaneClear();
+                    JungleClear();
                     break;
                 case OrbwalkerMode.LastHit:
+                    LastHit();
                     break;
             }
         }
 
+        #region Orbwalker Modes
 
-        public static void OnDraw(EventArgs args)
+        private static void Combo()
         {
-            if (MenuSettings.Drawing.d.Enabled)
-            {
+            var target = TargetSelector.GetTarget(1000);
 
-                if (me.IsDead)
+            if (target == null || target.IsDead || target.IsAlly)
+                return;
+
+            var getPrediction = Q.GetPrediction(target, false, 0, CollisionObjects.YasuoWall);
+            if (Q.IsReady() && target.IsValidTarget(Q.Range))
+            {
+                if (getPrediction.Hitchance >= HitChance.Medium)
                 {
+                    Q.Cast(getPrediction.CastPosition);
+                }
+                return;
+            }
+
+            var getPredictione = E.GetPrediction(target, false, 0, CollisionObjects.YasuoWall);
+            if(E.IsReady() && target.IsValidTarget(E.Range))
+            {
+                if(W.IsReady() && objPlayer.Mana >= Q.Mana + E.Mana)
+                {
+                    W.Cast(getPredictione.CastPosition - 50);
                     return;
                 }
-
-                if (Q.IsReady())
+                if (getPredictione.Hitchance >= HitChance.High)
                 {
-                    Render.Circle.DrawCircle(me.Position, Q.Range, Color.Red, 20);
+                    E.Cast(getPrediction.CastPosition);
                 }
-                if (E.IsReady())
-                {
-                    Render.Circle.DrawCircle(me.Position, E.Range, Color.Yellow, 1);
-                }
-                if (R.IsReady())
-                {
-                    Render.Circle.DrawCircle(me.Position, E.Range, Color.Red, 5);
-                }
-            }
-        }
-
-        private static void MissileClientOnOnDelete(GameObject sender, EventArgs args)
-        {
-            foreach (var networkID in Missiles)
-            {
-                foreach (var iD in NetworkIDs)
-                {
-                    if (networkID.NetworkId == iD)
-                    {
-                        DelayAction.Add(6000, (() => {
-                            NetworkIDs.Remove(iD);
-                            Missiles.Remove(networkID);
-                        }));
-                    }
-                }
-            }
-        }
-        private static void MissileClientOnOnCreate(GameObject sender, EventArgs args)
-        {
-            if (sender.Name == "Feather")
-            {
-                Missiles.Add(sender);
-                NetworkIDs.Add(Convert.ToInt32(sender.NetworkId));
-            }
-        }
-
-        /*public static void useQcombo()
-        {
-            var target = TargetSelector.GetTarget(Q.Range, true);
-            {
-                if (target.IsValidTarget(Q.Range))
-                {
-                    Q.Cast(target.Position);
-                }
-            }
-        }
-
-        public static void useWcombo()
-        {
-            var t = TargetSelector.GetTarget(W.Range - 50, true);
-            if (t.IsValidTarget(W.Range - 50))
-            {
-                W.Cast(t.Position);
-            }                
-        }
-
-        public static void useEcombo()
-        {
-            var t = TargetSelector.GetTarget(E.Range - 100, true);
-            if (t.IsValidTarget(E.Range))
-            {
-                E.Cast(t);
-            }
-        }*/
-
-        public static void Combo()
-        {
-            var target = TargetSelector.GetTarget(1000, DamageType.Physical);
-            if (target != null)
-            {
-                var tq = TargetSelector.GetTarget(Q.Range);
-                if (tq.Health > me.GetSpellDamage(tq, SpellSlot.Q))
-                {
-                    if (tq.IsValidTarget(Q.Range - 100))
-                    {
-                        Q.Cast(tq.Position);
-return;
-                    }
-                }
-                if (tq.Health <= me.GetSpellDamage(tq, SpellSlot.Q))
-                {
-                    if (tq.IsValidTarget(Q.Range))
-                    {
-                        Q.Cast(tq.Position);
-return;
-                    }
-                }
-                var tw = TargetSelector.GetTarget(W.Range);
-                if (tw.Health <= me.GetSpellDamage(tw, SpellSlot.W))
-                {
-                    if (tq.IsValidTarget(W.Range))
-                    {
-                        W.Cast(tw.PreviousPosition);
-return;
-                    }
-                }
-                if (tw.Health > me.GetSpellDamage(tw, SpellSlot.W))
-                {
-                    if (tw.DistanceToPlayer() > me.GetRealAutoAttackRange())
-                    {
-                        W.Cast(tw.PreviousPosition);
-return;
-                    }
-                    if (me.CountEnemyHeroesInRange(700) > 1)
-                    {
-                        W.Cast(tw);
-return;
-                    }
-                }
-                var te = TargetSelector.GetTarget(E.Range);
-                if (te.Health > me.GetSpellDamage(te, SpellSlot.E))
-                {
-                    if (te.IsValidTarget(E.Range - 100))
-                    {
-                        E.Cast(te.PreviousPosition);
-                        Orbwalker.Attack(te);
-return;
-                    }
-                }
-                if (te.Health <= me.GetSpellDamage(te, SpellSlot.E))
-                {
-                    if (te.IsValidTarget(E.Range))
-                    {
-                        E.Cast(te.PreviousPosition);
-                        Orbwalker.Attack(te);
-return;
-                    }
-                }
-                var tr = TargetSelector.GetTarget(R.Range);
-                if (tr.IsValidTarget(R.Range))
-                {
-                    if (me.HealthPercent < 30)
-                    {
-                        if (tr.HealthPercent > 30)
-                        {
-                            R.Cast();
-return;
-                        }
-                    }
-                    if (me.HealthPercent < 20)
-                    {
-                        R.Cast();
-return;
-                    }
-                    if (me.CountEnemyHeroesInRange(500) >= 3)
-                    {
-                        R.Cast();
-return;
-                    }
-                    if (me.GetSpellDamage(tr, SpellSlot.R) + me.GetSpellDamage(tq, SpellSlot.Q) > tr.Health)
-                    {
-                        R.Cast();
-return;
-                    }
-                }
-            }
-        }
-
-        public static void killsteal()
-        {
-            var tq = TargetSelector.GetTarget(Q.Range);
-            var tw = TargetSelector.GetTarget(W.Range);
-            var te = TargetSelector.GetTarget(E.Range);
-            var tr = TargetSelector.GetTarget(R.Range);
-
-            if (tq.Health <= me.GetSpellDamage(tq, SpellSlot.Q))
-            {
-                if (tq.IsValidTarget(Q.Range + 100))
-                {
-                    if (Q.IsReady())
-                    {
-                        Q.Cast(tq.Position);
-return;
-                    }
-                }
-            }
-            if (tw.Health <= me.GetSpellDamage(tw, SpellSlot.W))
-            {
-                if (tw.IsValidTarget(W.Range))
-                {
-                    if (W.IsReady())
-                    {
-                        W.Cast(tw.PreviousPosition);
-return;
-                    }
-                }
-            }
-            if (te.Health <= me.GetSpellDamage(te, SpellSlot.E))
-            {
-                if (te.IsValidTarget(E.Range))
-                {
-                    if (E.IsReady())
-                    {
-                        E.Cast(te.PreviousPosition);
-return;
-                    }
-                }
-            }
-            if (tr.Health <= me.GetSpellDamage(tr, SpellSlot.R))
-            {
-                if(tr.IsValidTarget(R.Range))
-                {
-                    if (R.IsReady())
-                    {
-                        if (me.HasBuff("SwainR"))
-                        {
-                            R.Cast();
-return;
-                        }
-                    }
-                }
-            }
-
-            //killsteall with flash
-            if (tq.Health <= me.GetSpellDamage(tq, SpellSlot.Q))
-            {
-                if (tq.IsValidTarget(Q.Range + 400))
-                {
-                    if (tq.DistanceToPlayer() > Q.Range)
-                    {
-                        if (Q.IsReady())
-                        {
-                            if (Flash.IsReady())
-                            {
-                                me.Spellbook.CastSpell(Flash, tq.Position);
-                                DelayAction.Add(100, () =>
-                                {
-                                    Q.Cast(tq.Position);
-                                });
-return;
-                            }
-                        }
-                    }
-                }
-            }
-            if (tr.Health <= me.GetSpellDamage(tr, SpellSlot.R))
-            {
-                if (tq.IsValidTarget(R.Range + 400))
-                {
-                    if (tr.DistanceToPlayer() > R.Range)
-                    {
-                        if (R.IsReady())
-                        {
-                            if (me.HasBuff("SwainR"))
-                            {
-                                if (Flash.IsReady())
-                                {
-                                    R.Cast();
-                                    DelayAction.Add(100, () =>
-                                    {
-                                        me.Spellbook.CastSpell(Flash, tr.Position);
-                                    });
-return;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        public static void clear()
-        {
-            var allMinions = GameObjects.EnemyMinions.Where(x => x.IsMinion() && !x.IsDead).OrderBy(x => x.Distance(me.Position));
-
-            if (allMinions.Count() == 0)
                 return;
+            }
+
+            if(target.IsValidTarget(R.Range) && R.IsReady())
+            {
+                if (objPlayer.HasBuff("SwainR")) { return; }
+                if(objPlayer.CountEnemyHeroesInRange(R.Range) >2)
+                {
+                    R.Cast();
+                }
+            }            
+        }
+        private static void Harass()
+        {
+            var t = TargetSelector.GetTarget(Q.Range);
+            if (objPlayer.ManaPercent < 40)
+                return;
+            if (t.IsDead || t == null) { return; }
+
+            if(Q.IsReady() && t.IsValidTarget(Q.Range - 100))
+            {
+                Q.Cast(t.PreviousPosition);
+            }
+            var getPrediction = E.GetPrediction(t, false, 0, CollisionObjects.YasuoWall);
+            if (E.IsReady() && t.IsValidTarget(E.Range - 100) && getPrediction.Hitchance >= HitChance.High)
+            {
+                E.Cast(getPrediction.CastPosition);
+            }            
+        }
+        private static void LaneClear()
+        {
+            if (objPlayer.ManaPercent < 30)
+                return;
+            var allMinions = GameObjects.EnemyMinions.Where(x => x.IsMinion() && !x.IsDead).OrderBy(x => x.Distance(objPlayer.Position));
+            foreach (var min in allMinions.Where(x => x.IsValidTarget(Q.Range - 15) && x.Health * 3 < Q.GetDamage(x)))
+            {
+                var getPrediction = Q.GetPrediction(min, false, 0, CollisionObjects.YasuoWall);
+                var getCollisions = getPrediction.CollisionObjects.ToList();
+
+                if (getCollisions.Any() && (getCollisions.Count() == 1 && getCollisions.FirstOrDefault().Health * 2 < Q.GetDamage(getCollisions.FirstOrDefault())))
+                {
+                    Q.Cast(getPrediction.CastPosition);
+                }
+                else if (getCollisions.Count() == 2 && getCollisions[0].Health * 3 < Q.GetDamage(getCollisions[0]) && getCollisions[1].Health * 3 < Q.GetDamage(getCollisions[1]))
+                {
+                    Q.Cast(getPrediction.CastPosition);
+                }
+            }           
+        }
+
+        //wait 
+        private static void JungleClear()
+        {
+            
+        }
+        private static void LastHit()
+        {
+            
+        }
+
+        #endregion
+
+        #region Events
+
+        private static void OnAction(object sender, OrbwalkerActionArgs args)
+        {
+            
+        }
+        private static void OnInterrupterSpell(AIHeroClient sender, Interrupter.InterruptSpellArgs arg)
+        {
+            
+        }
+        private static void OnGapcloser(AIHeroClient sender, Gapcloser.GapcloserArgs args)
+        {            
+            if (args != null && args.EndPosition.DistanceToPlayer() < 350)
+                E.Cast(objPlayer.Position);
+        }
+
+        #endregion
+
+        #region Drawings
+
+        private static void OnDraw(EventArgs args)
+        {
 
             if (Q.IsReady())
             {
-                if (me.ManaPercent < 40)
+                Render.Circle.DrawCircle(objPlayer.Position, Q.Range, System.Drawing.Color.AliceBlue);
+            }
+            if (W.IsReady())
+            {
+                Render.Circle.DrawCircle(objPlayer.Position, W.Range, System.Drawing.Color.Beige);
+            }
+            if (E.IsReady())
+            {
+                Render.Circle.DrawCircle(objPlayer.Position, W.Range, System.Drawing.Color.DodgerBlue);
+            }
+            if (R.IsReady())
+            {
+                Drawing.DrawCircle(objPlayer.Position, R.Range, System.Drawing.Color.DarkBlue);
+            }
+        }
+        private static void OnEndScene(EventArgs args)
+        {
+            foreach (var target in GameObjects.EnemyHeroes.Where(x => x.IsValidTarget(2000) && !x.IsDead && x.IsHPBarRendered))
+            {
+                Vector2 pos = Drawing.WorldToScreen(target.Position);
+
+                if (!pos.IsOnScreen())
                     return;
 
-                foreach (var min in allMinions.Where(x => x.IsValidTarget(Q.Range - 15) && x.Health < Q.GetDamage(x)))
-                {
-                    var getPrediction = Q.GetPrediction(min, true);
-                    var getCollisions = getPrediction.CollisionObjects.ToList();
+                var damage = getDamage(target, true, true, true, true);
 
-                    switch (MenuSettings.clear.qStackMode.SelectedValue)
+                var hpBar = target.HPBarPosition;
+
+                if (damage > target.Health)
+                {
+                    Drawing.DrawText(hpBar.X + 69, hpBar.Y - 45, System.Drawing.Color.White, "KILLABLE");
+                    Drawing.DrawText(hpBar.X + 69, hpBar.Y + 45, System.Drawing.Color.Red, "HE IS RUNNING");
+                }
+
+                var damagePercentage = ((target.Health - damage) > 0 ? (target.Health - damage) : 0) / target.MaxHealth;
+                var currentHealthPercentage = target.Health / target.MaxHealth;
+
+                var startPoint = new Vector2(hpBar.X - 45 + damagePercentage * 104, hpBar.Y - 18);
+                var endPoint = new Vector2(hpBar.X - 45 + currentHealthPercentage * 104, hpBar.Y - 18);
+
+                Drawing.DrawLine(startPoint, endPoint, 12, System.Drawing.Color.Yellow);
+            }
+        }
+
+        #endregion
+
+        #region Misc
+
+        private static void KillSteal()
+        {
+            foreach (var target in GameObjects.EnemyHeroes.Where(x => x.IsValidTarget(Q.Range)))
+            {
+                if (summonerIgnite.IsReady() && target.IsValidTarget(600))
+                {
+                    if (target.Health + target.MagicalShield < objPlayer.GetSummonerSpellDamage(target, SummonerSpell.Ignite))
                     {
-                        case "LastHit 1 Minion":
-                            if (getCollisions.Any() && getCollisions.Count() <= 1)
-                            {
-                                Q.Cast(getPrediction.CastPosition);
-                            }
-                            else
-                            {
-                                Q.Cast(getPrediction.CastPosition);
-                            }
-                            break;
-                        case "LastHit >= 2 Minions":
-                            if (getCollisions.Any() && (getCollisions.Count() == 1 && getCollisions.FirstOrDefault().Health < Q.GetDamage(getCollisions.FirstOrDefault()) - 10))
-                            {
-                                Q.Cast(getPrediction.CastPosition);
-                            }
-                            else if (getCollisions.Count() >= 2 && getCollisions[0].Health < Q.GetDamage(getCollisions[0]) / 3 && getCollisions[1].Health < Q.GetDamage(getCollisions[1]) / 3)
-                            {
-                                Q.Cast(getPrediction.CastPosition);
-                            }
-                            break;
+                        objPlayer.Spellbook.CastSpell(summonerIgnite, target);
                     }
                 }
 
-            }
+                if (Q.IsReady() && target.IsValidTarget(Q.Range) && target.Health + target.MagicalShield < Q.GetDamage(target))
+                {
+                    Q.Cast(target.Position);
+                }
+
+                if (W.IsReady() && target.IsValidTarget(W.Range) && target.Health + target.MagicalShield < W.GetDamage(target))
+                {
+                    var getPrediction = W.GetPrediction(target);
+                    W.Cast(getPrediction.CastPosition);
+                }
+
+                if (E.IsReady() && target.IsValidTarget(E.Range) && target.Health + target.MagicalShield < E.GetDamage(target))
+                {
+                    var getPrediction = E.GetPrediction(target, false, 0, CollisionObjects.YasuoWall);
+                    E.Cast(getPrediction.CastPosition);
+                }
+
+                if (R.IsReady() && objPlayer.HasBuff("SwainR") && target.Health + target.MagicalShield < R.GetDamage(target) && target.IsValidTarget(600))
+                {
+                    R.Cast();
+                }
+            }               
         }
 
-        private static void GapcloserOnOnGapcloser(AIHeroClient sender, Gapcloser.GapcloserArgs args)
+        #region Extensions
+
+        private static float getDamage(AIBaseClient target, bool q = false, bool w = false, bool r = false, bool ignite = false)
         {
-            if (!sender.IsEnemy) return;
-            if (E.IsReady() && sender.IsValidTarget(E.Range))
+            float damage = 0;
+
+            if (target == null || target.IsDead)
+                return 0;
+            if (target.HasBuffOfType(BuffType.Invulnerability))
+                return 0;
+
+            if (q && Q.IsReady())
+                damage += (float)Damage.GetSpellDamage(objPlayer, target, SpellSlot.Q);
+            if (w && W.IsReady())
+                damage += (float)Damage.GetSpellDamage(objPlayer, target, SpellSlot.W);
+            if (r && R.IsReady())
+                damage += (float)Damage.GetSpellDamage(objPlayer, target, SpellSlot.R);
+
+            if (ignite && summonerIgnite.IsReady())
+                damage += (float)objPlayer.GetSummonerSpellDamage(target, SummonerSpell.Ignite);
+
+            if (objPlayer.GetBuffCount("itemmagicshankcharge") == 100) // oktw sebby
+                damage += (float)objPlayer.CalculateMagicDamage(target, 100 + 0.1 * objPlayer.TotalMagicalDamage);
+
+            if (target.HasBuff("ManaBarrier") && target.HasBuff("BlitzcrankManaBarrierCO"))
+                damage += target.Mana / 2f;
+            if (target.HasBuff("GarenW"))
+                damage = damage * 0.7f;
+            if (target.HasBuff("ferocioushowl"))
             {
-                E.Cast(sender);
+                damage = damage * 0.7f;
             }
+
+            return damage;
         }
+
+        #endregion
+
+        #endregion
     }
 }
